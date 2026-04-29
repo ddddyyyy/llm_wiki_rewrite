@@ -1,0 +1,412 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LLM Wiki Web 中文版</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="nav-rail">
+        <div class="nav-brand">
+          <span class="brand-mark">LW</span>
+          <div class="brand-copy">
+            <strong>LLM Wiki</strong>
+            <span>Web</span>
+          </div>
+        </div>
+        <nav id="nav-buttons" class="nav-buttons" aria-label="主导航">
+          <button type="button" class="nav-button" data-view="projects">项目</button>
+          <button type="button" class="nav-button active" data-view="wiki">知识库</button>
+          <button type="button" class="nav-button" data-view="sources">来源</button>
+          <button type="button" class="nav-button" data-view="search">搜索</button>
+          <button type="button" class="nav-button" data-view="graph">图谱</button>
+          <button type="button" class="nav-button" data-view="lint">检查</button>
+          <button type="button" class="nav-button" data-view="review">复核</button>
+          <button type="button" class="nav-button" data-view="chat">问答</button>
+          <button type="button" class="nav-button" data-view="settings">设置</button>
+        </nav>
+      </aside>
+
+      <aside class="projects-panel">
+        <section id="projects-panel-home" class="projects-panel-section">
+          <div class="panel-header">
+            <div>
+              <p class="eyebrow">项目工作区</p>
+              <h1>项目</h1>
+            </div>
+            <p class="panel-copy">这里保留项目选择和创建，具体功能放到各自的独立视图里。</p>
+          </div>
+
+          <div class="create-form">
+            <input id="new-project-name" placeholder="新的研究项目" />
+            <button id="create-project-button" type="button">创建</button>
+          </div>
+
+          <div id="project-list" class="project-list"></div>
+        </section>
+
+        <section id="projects-panel-sources" class="projects-panel-section" hidden>
+          <div class="panel-header">
+            <div>
+              <p class="eyebrow">来源文件</p>
+              <h1>来源文件树</h1>
+            </div>
+            <p class="panel-copy">在这里浏览原始资料和 Wiki 文件，右侧继续查看或编辑内容。</p>
+          </div>
+          <section class="tree-panel tree-panel--embedded tree-panel--column">
+            <div id="source-scope-tabs" class="source-scope-tabs">
+              <button type="button" class="source-scope-tab active" data-scope="raw">原始文件</button>
+              <button type="button" class="source-scope-tab" data-scope="wiki">Wiki 文件</button>
+              <button type="button" class="source-scope-tab" data-scope="all">全部</button>
+            </div>
+            <div id="tree-root" class="tree"></div>
+          </section>
+        </section>
+      </aside>
+
+      <main class="workspace-shell">
+        <header class="workspace-header">
+          <div class="workspace-header-main">
+            <div class="workspace-pill">
+              <span class="workspace-pill-label">项目</span>
+              <strong id="active-project-name">还没有选择项目</strong>
+            </div>
+            <div class="workspace-pill workspace-pill--muted">
+              <span class="workspace-pill-label">标识</span>
+              <span id="active-project-meta">先在左侧创建项目，或者打开一个已有项目。</span>
+            </div>
+          </div>
+          <div class="workspace-header-side">
+            <div class="workspace-pill">
+              <span class="workspace-pill-label">视图</span>
+              <strong id="active-view-title">知识库</strong>
+            </div>
+            <div id="header-source-actions" class="header-source-actions" hidden>
+              <label id="upload-button" class="upload-button upload-button--compact disabled">
+                <input id="upload-input" type="file" multiple />
+                <span id="upload-label">上传源文件</span>
+              </label>
+              <label id="upload-folder-button" class="upload-button upload-button--compact disabled">
+                <input id="upload-folder-input" type="file" webkitdirectory directory multiple />
+                <span id="upload-folder-label">导入文件夹</span>
+              </label>
+              <button id="ingest-button" class="secondary-button secondary-button--compact" type="button" disabled>运行提取</button>
+            </div>
+          </div>
+        </header>
+
+        <div id="workspace-body" class="workspace-body">
+          <aside id="context-pane" class="context-pane">
+            <section id="sidebar-knowledge" class="context-section">
+              <div class="section-title">知识分类</div>
+              <div id="knowledge-tabs" class="knowledge-tabs"></div>
+              <div id="knowledge-list" class="knowledge-list"></div>
+            </section>
+
+            <section id="sidebar-search" class="context-section" hidden>
+              <div class="section-title">知识搜索</div>
+              <div class="search-panel">
+                <div class="search-form">
+                  <input id="search-input" placeholder="搜索概念、来源、问题或原始文件" />
+                  <button id="search-button" type="button">搜索</button>
+                </div>
+                <div id="search-results" class="search-results"></div>
+              </div>
+            </section>
+
+            <section id="sidebar-review" class="context-section" hidden>
+              <div class="section-title">项目透镜</div>
+              <section class="lens-panel">
+                <div id="lens-metrics" class="lens-metrics"></div>
+                <div class="lens-section">
+                  <div class="lens-subtitle">开放问题</div>
+                  <div id="lens-queries" class="lens-list"></div>
+                </div>
+                <div class="lens-section">
+                  <div class="lens-subtitle">待处理队列</div>
+                  <div id="lens-review" class="lens-list"></div>
+                </div>
+                <div class="lens-section">
+                  <div class="lens-subtitle">已处理项</div>
+                  <div id="lens-resolved-review" class="lens-list"></div>
+                </div>
+              </section>
+            </section>
+
+            <section id="sidebar-chat" class="context-section" hidden>
+              <div class="section-title">聊天会话</div>
+              <div class="conversation-sidebar">
+                <button id="new-conversation-button" class="secondary-button" type="button">新建对话</button>
+                <div id="chat-conversation-list" class="conversation-list"></div>
+              </div>
+            </section>
+          </aside>
+
+          <section class="detail-pane">
+            <section id="detail-projects" class="detail-section" hidden>
+              <div class="projects-home">
+                <section class="projects-home-card">
+                  <div class="section-title">项目工作区</div>
+                  <p class="panel-copy">这里专门用于创建和切换项目。选好项目后，再去知识库、来源、搜索或问答页面继续工作。</p>
+                </section>
+                <section class="projects-home-card">
+                  <div class="section-title section-title--small">建议流程</div>
+                  <ol class="projects-home-steps">
+                    <li>先创建一个项目，或者在左侧打开已有项目。</li>
+                    <li>去“来源”页面上传资料并运行提取。</li>
+                    <li>去“知识库”页面查看知识页，同时从来源文件树打开原始文件。</li>
+                    <li>再去“问答”和“图谱”页面继续整理。</li>
+                  </ol>
+                </section>
+              </div>
+            </section>
+
+            <section id="detail-editor" class="detail-section">
+              <div class="editor-toolbar">
+                <div>
+                  <div class="section-title">编辑器</div>
+                  <div id="current-path" class="current-path">未选择文件</div>
+                </div>
+                <div class="editor-toolbar-actions">
+                  <button id="reingest-source-button" class="secondary-button" type="button" hidden>重新提取来源</button>
+                  <button id="delete-source-button" class="danger-button" type="button" hidden>删除来源文件</button>
+                  <button id="save-button" type="button" disabled>保存</button>
+                </div>
+              </div>
+              <section id="download-panel" class="download-panel" hidden>
+                <div class="download-card">
+                  <div class="section-title">文件不可预览</div>
+                  <p id="download-copy" class="panel-copy">这个文件类型不在网页预览范围内，请直接下载查看。</p>
+                  <a id="download-link" class="download-link" href="#" download>下载文件</a>
+                </div>
+              </section>
+              <div id="editor-grid" class="editor-grid fixed-panel">
+                <textarea id="editor" placeholder="从知识库、来源、搜索或复核视图中打开一个文件，然后在这里编辑。"></textarea>
+                <article class="preview-panel">
+                  <div id="preview">这里会显示预览。</div>
+                </article>
+              </div>
+            </section>
+
+            <section id="detail-sources" class="detail-section" hidden>
+              <div class="sources-workspace">
+                <section class="sources-summary-card">
+                  <div>
+                    <div class="section-title">来源导入工作台</div>
+                    <p class="panel-copy">这个页面只处理资料上传、运行提取和任务跟踪，不再混入编辑器。</p>
+                  </div>
+                  <div class="sources-summary-grid">
+                    <div class="sources-summary-item">
+                      <strong id="sources-summary-total">0</strong>
+                      <span>任务总数</span>
+                    </div>
+                    <div class="sources-summary-item">
+                      <strong id="sources-summary-running">0</strong>
+                      <span>进行中</span>
+                    </div>
+                    <div class="sources-summary-item">
+                      <strong id="sources-summary-done">0</strong>
+                      <span>已完成</span>
+                    </div>
+                    <div class="sources-summary-item">
+                      <strong id="sources-summary-error">0</strong>
+                      <span>失败</span>
+                    </div>
+                  </div>
+                </section>
+                <section id="sources-task-panel" class="tasks-panel tasks-panel--workspace">
+                  <div class="section-header">
+                    <div class="section-title">提取任务</div>
+                    <p class="panel-copy">一次“运行提取”会创建一个项目级任务，按顺序处理来源文件；失败后可以直接重新开始。</p>
+                  </div>
+                  <div id="task-list" class="task-list"></div>
+                </section>
+                <section class="sources-records-card sources-records-card--compact">
+                  <div class="section-header">
+                    <div class="section-title">最近导入批次</div>
+                    <p class="panel-copy">文件夹导入会保留层级结构，这里会显示最近的导入记录。</p>
+                  </div>
+                  <div id="sources-import-history" class="sources-import-history"></div>
+                </section>
+              </div>
+            </section>
+
+            <section id="detail-graph" class="detail-section" hidden>
+              <div class="graph-toolbar">
+                <div>
+                  <div class="section-title">知识图谱</div>
+                  <div id="graph-summary" class="current-path">图谱尚未加载</div>
+                </div>
+                <div class="graph-controls">
+                  <select id="graph-type-filter">
+                    <option value="all">全部类型</option>
+                  </select>
+                  <label class="graph-toggle">
+                    <input id="graph-neighbor-only" type="checkbox" />
+                    <span>仅高亮关联节点</span>
+                  </label>
+                </div>
+              </div>
+              <div id="graph-stage" class="graph-stage"></div>
+              <div id="graph-legend" class="graph-legend"></div>
+              <section id="graph-insights" class="graph-insights"></section>
+            </section>
+
+            <section id="detail-lint" class="detail-section" hidden>
+              <div class="lint-page">
+                <div class="lint-toolbar">
+                  <div>
+                    <div class="section-title">知识库检查</div>
+                    <p class="panel-copy">先做结构性检查，帮助我们快速发现孤立页、断链和缺少交叉引用的问题。</p>
+                  </div>
+                  <button id="run-lint-button" class="secondary-button" type="button">运行检查</button>
+                </div>
+                <section id="lint-summary" class="lint-summary"></section>
+                <section id="lint-insights" class="lint-summary"></section>
+                <section id="lint-list" class="lint-list"></section>
+              </div>
+            </section>
+
+            <section id="detail-chat" class="detail-section" hidden>
+              <div class="chat-panel chat-panel--page">
+                <div class="chat-toolbar">
+                  <div>
+                    <div class="section-title">问答</div>
+                    <p class="panel-copy">围绕当前项目的知识页、来源资料和问题页继续追问，回答会优先引用知识库页面。</p>
+                  </div>
+                  <div class="chat-toolbar-badges">
+                    <span class="chat-toolbar-badge">会话持久化</span>
+                    <span class="chat-toolbar-badge">Markdown 回答</span>
+                    <span class="chat-toolbar-badge">可回写综合页</span>
+                  </div>
+                </div>
+                <div id="chat-messages" class="chat-messages"></div>
+                <div class="chat-form">
+                  <textarea id="chat-input" rows="1" placeholder="输入你想问的内容，例如：这个项目下一步应该继续追哪些问题？"></textarea>
+                  <div class="chat-form-footer">
+                    <span class="chat-form-hint">Enter 发送，Shift+Enter 换行</span>
+                    <button id="chat-send-button" type="button" disabled>提问</button>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <section id="detail-settings" class="detail-section" hidden>
+              <div class="settings-page">
+                <div class="settings-header">
+                  <div>
+                    <div class="section-title">设置</div>
+                    <p class="panel-copy">把影响知识提取、问答、搜索和输出风格的配置集中放在这里。</p>
+                  </div>
+                  <button id="save-settings-button" class="secondary-button" type="button">保存配置</button>
+                </div>
+
+                <section class="settings-card">
+                  <div class="section-title section-title--small">LLM 提供方</div>
+                  <div class="settings-grid">
+                    <label class="settings-field">
+                      <span>协议模式</span>
+                      <select id="llm-api-mode">
+                        <option value="anthropic_messages">Anthropic Messages</option>
+                        <option value="chat_completions">OpenAI Chat Completions</option>
+                      </select>
+                    </label>
+                    <label class="settings-field">
+                      <span>最大上下文字符数</span>
+                      <input id="llm-max-context-size" type="number" min="4000" step="1000" placeholder="204800" />
+                    </label>
+                    <label class="settings-field settings-field--full">
+                      <span>接口地址</span>
+                      <input id="llm-base-url" placeholder="https://ark.cn-beijing.volces.com/api/coding" />
+                    </label>
+                    <label class="settings-field">
+                      <span>模型</span>
+                      <input id="llm-model" placeholder="Doubao-Seed-2.0-Code" />
+                    </label>
+                    <label class="settings-field">
+                      <span>API Key</span>
+                      <input id="llm-api-key" type="password" placeholder="API Key" />
+                    </label>
+                  </div>
+                  <label class="toggle-row">
+                    <input id="llm-enabled" type="checkbox" />
+                    <span>启用 LLM 提取与问答</span>
+                  </label>
+                </section>
+
+                <section class="settings-card">
+                  <div class="section-title section-title--small">输出语言</div>
+                  <div class="settings-grid">
+                    <label class="settings-field">
+                      <span>生成语言</span>
+                      <select id="output-language">
+                        <option value="auto">自动</option>
+                        <option value="Chinese">简体中文</option>
+                        <option value="English">English</option>
+                        <option value="Japanese">日本語</option>
+                        <option value="Korean">한국어</option>
+                      </select>
+                    </label>
+                  </div>
+                </section>
+
+                <section class="settings-card">
+                  <div class="section-title section-title--small">联网搜索</div>
+                  <div class="settings-grid">
+                    <label class="settings-field">
+                      <span>搜索提供方</span>
+                      <select id="search-provider">
+                        <option value="none">关闭</option>
+                        <option value="tavily">Tavily</option>
+                      </select>
+                    </label>
+                    <label class="settings-field">
+                      <span>搜索 API Key</span>
+                      <input id="search-api-key" type="password" placeholder="Tavily API Key" />
+                    </label>
+                  </div>
+                </section>
+
+                <section class="settings-card">
+                  <div class="section-title section-title--small">向量检索</div>
+                  <label class="toggle-row">
+                    <input id="embedding-enabled" type="checkbox" />
+                    <span>启用语义搜索 / Embedding</span>
+                  </label>
+                  <div class="settings-grid">
+                    <label class="settings-field settings-field--full">
+                      <span>Embedding Endpoint</span>
+                      <input id="embedding-endpoint" placeholder="http://127.0.0.1:1234/v1/embeddings" />
+                    </label>
+                    <label class="settings-field">
+                      <span>Embedding API Key</span>
+                      <input id="embedding-api-key" type="password" placeholder="可选" />
+                    </label>
+                    <label class="settings-field">
+                      <span>Embedding Model</span>
+                      <input id="embedding-model" placeholder="text-embedding-qwen3-embedding-0.6b" />
+                    </label>
+                    <label class="settings-field">
+                      <span>分块大小</span>
+                      <input id="embedding-max-chunk-chars" type="number" min="200" step="100" placeholder="1000" />
+                    </label>
+                    <label class="settings-field">
+                      <span>重叠字符数</span>
+                      <input id="embedding-overlap-chunk-chars" type="number" min="0" step="50" placeholder="200" />
+                    </label>
+                  </div>
+                </section>
+              </div>
+            </section>
+          </section>
+        </div>
+      </main>
+
+      <footer id="status-bar" class="status-bar">已就绪</footer>
+    </div>
+
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>

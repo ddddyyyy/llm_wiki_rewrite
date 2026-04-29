@@ -1,0 +1,8 @@
+{
+  "name": "llm-wiki-server",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node src/app.js"
+  }
+}
