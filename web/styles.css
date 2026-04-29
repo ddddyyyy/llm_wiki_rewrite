@@ -149,6 +149,14 @@ button {
   min-height: 0;
 }
 
+.app-shell:not(.is-projects-view) .projects-panel {
+  overflow: hidden;
+}
+
+.app-shell:not(.is-projects-view) .projects-panel-section {
+  height: 100%;
+}
+
 .app-shell.is-projects-view .projects-panel {
   width: min(100%, 860px);
   justify-self: center;
@@ -495,15 +503,17 @@ textarea {
 .sources-workspace {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
-  gap: 16px;
+  gap: 12px;
   height: 100%;
   min-height: 0;
 }
 
 .sources-summary-card {
   display: grid;
-  gap: 10px;
-  padding: 12px 14px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
   border: 1px solid rgba(59, 74, 96, 0.08);
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.78);
@@ -511,8 +521,8 @@ textarea {
 
 .sources-summary-card .panel-copy {
   margin: 2px 0 0;
-  font-size: 0.88rem;
-  line-height: 1.45;
+  font-size: 0.82rem;
+  line-height: 1.35;
 }
 
 .section-header {
@@ -575,25 +585,26 @@ textarea {
 .sources-summary-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 8px;
+  gap: 6px;
 }
 
 .sources-summary-item {
   display: grid;
   gap: 2px;
-  padding: 9px 10px;
+  min-width: 82px;
+  padding: 7px 8px;
   border-radius: 9px;
   border: 1px solid rgba(59, 74, 96, 0.08);
   background: rgba(248, 250, 252, 0.82);
 }
 
 .sources-summary-item strong {
-  font-size: 1.02rem;
+  font-size: 0.96rem;
   color: #8d6b36;
 }
 
 .sources-summary-item span {
-  font-size: 0.8rem;
+  font-size: 0.74rem;
   color: rgba(64, 79, 99, 0.72);
 }
 
@@ -812,8 +823,19 @@ textarea {
   min-height: 0;
 }
 
+.app-shell:not(.is-projects-view) .tree-panel--embedded.tree-panel--column {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  min-height: 0;
+}
+
 .tree-panel--column .tree {
   max-height: calc(100vh - 260px);
+}
+
+.app-shell:not(.is-projects-view) .tree-panel--column .tree {
+  max-height: none;
+  min-height: 0;
 }
 
 .source-scope-tabs {
@@ -1142,8 +1164,14 @@ textarea {
 #sidebar-review .lens-panel {
   display: grid;
   grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
-  min-height: calc(100vh - 250px);
-  height: calc(100vh - 250px);
+  min-height: 0;
+  height: 100%;
+}
+
+#sidebar-review {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  min-height: 100%;
 }
 
 #sidebar-review .lens-section {
