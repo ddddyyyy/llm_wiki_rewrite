@@ -871,6 +871,7 @@ textarea {
   gap: 2px;
   overflow: auto;
   padding-right: 4px;
+  align-content: start;
 }
 
 .tree-item {
@@ -1145,6 +1146,7 @@ textarea {
 .lens-list {
   overflow: auto;
   padding-right: 4px;
+  align-content: start;
 }
 
 #sidebar-knowledge .knowledge-list {
@@ -1210,8 +1212,17 @@ textarea {
 
 .lens-item {
   display: grid;
-  gap: 6px;
+  gap: 4px;
   padding: 10px;
+  align-content: start;
+}
+
+.lens-item strong {
+  line-height: 1.35;
+}
+
+.lens-item span {
+  line-height: 1.45;
 }
 
 .lens-item.resolved {
