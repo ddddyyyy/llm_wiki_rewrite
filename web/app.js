@@ -137,7 +137,6 @@ const els = {
   graphNeighborOnly: document.querySelector("#graph-neighbor-only"),
   runLintButton: document.querySelector("#run-lint-button"),
   lintSummary: document.querySelector("#lint-summary"),
-  lintInsights: document.querySelector("#lint-insights"),
   lintList: document.querySelector("#lint-list"),
   preview: document.querySelector("#preview"),
   chatMessages: document.querySelector("#chat-messages"),

@@ -1,4 +1,3 @@
-import { analyzeGraphInsights } from "../lib/graph-insights.js"
 import { buildWikiGraphModel } from "../lib/wiki-graph-model.js"
 
 export function createLintService({ projectFs, projectService }) {
@@ -11,7 +10,6 @@ export function createLintService({ projectFs, projectService }) {
       collectFiles,
       readProjectFile,
     })
-    const insights = analyzeGraphInsights(model.nodes, model.edges)
 
     const findings = []
     for (const page of model.pages) {
@@ -47,16 +45,6 @@ export function createLintService({ projectFs, projectService }) {
       })
     }
 
-    for (const cluster of insights.sparseClusters.slice(0, 4)) {
-      findings.push({
-        type: "sparse-cluster",
-        severity: "info",
-        page: cluster.members[0]?.path || "wiki/index.md",
-        label: "知识簇连接偏弱",
-        detail: `这组页面共有 ${cluster.nodeCount} 页，内部连接密度仅 ${cluster.cohesion.toFixed(2)}，建议补充互链或中间页。`,
-      })
-    }
-
     findings.sort((a, b) => {
       const severityOrder = { warning: 0, info: 1 }
       return (severityOrder[a.severity] - severityOrder[b.severity]) || a.page.localeCompare(b.page)
@@ -64,18 +52,11 @@ export function createLintService({ projectFs, projectService }) {
 
     return {
       findings,
-      insights: {
-        isolatedNodes: insights.isolatedNodes.slice(0, 6),
-        sparseClusters: insights.sparseClusters.slice(0, 4),
-        bridgeNodes: insights.bridgeNodes.slice(0, 4),
-      },
       summary: {
         total: findings.length,
         warnings: findings.filter((item) => item.severity === "warning").length,
         infos: findings.filter((item) => item.severity === "info").length,
         pagesChecked: model.pages.length,
-        bridgeNodes: insights.bridgeNodes.length,
-        sparseClusters: insights.sparseClusters.length,
       },
     }
   }
