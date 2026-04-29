@@ -30,7 +30,8 @@ export async function buildWikiGraphModel(projectId, deps) {
   const { ensureInsideProject, collectFiles, readProjectFile } = deps
   const wikiRoot = ensureInsideProject(projectId, "wiki").fullPath
   const files = await collectFiles(wikiRoot).catch(() => [])
-  const markdownFiles = files.filter((file) => file.path.endsWith(".md") && file.path !== "log.md")
+  const excludedPaths = new Set(["log.md", "index.md", "overview.md"])
+  const markdownFiles = files.filter((file) => file.path.endsWith(".md") && !excludedPaths.has(file.path))
 
   const nodesByPath = new Map()
   const slugToPath = new Map()
