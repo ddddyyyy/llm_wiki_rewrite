@@ -119,14 +119,12 @@
             <section id="sidebar-review" class="context-section" hidden>
               <div class="section-title">项目透镜</div>
               <section class="lens-panel">
-                <div class="lens-section">
-                  <div class="lens-subtitle">开放问题</div>
-                  <div id="lens-queries" class="lens-list"></div>
+                <div class="lens-tabs" id="lens-tabs">
+                  <button type="button" class="lens-tab active" data-lens-tab="queries">开放问题</button>
+                  <button type="button" class="lens-tab" data-lens-tab="review">待处理项</button>
                 </div>
-                <div class="lens-section">
-                  <div class="lens-subtitle">待处理项</div>
-                  <div id="lens-review" class="lens-list"></div>
-                </div>
+                <div id="lens-queries" class="lens-list"></div>
+                <div id="lens-review" class="lens-list" hidden></div>
               </section>
             </section>
 

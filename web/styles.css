@@ -1171,7 +1171,7 @@ textarea {
 
 #sidebar-review .lens-panel {
   display: grid;
-  grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
   min-height: 0;
   height: 100%;
 }
@@ -1182,21 +1182,31 @@ textarea {
   min-height: 100%;
 }
 
-#sidebar-review .lens-section {
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
-  min-height: 0;
-}
-
-#sidebar-review .lens-section + .lens-section {
-  border-top: 1px solid rgba(59, 74, 96, 0.12);
-  padding-top: 12px;
-  margin-top: 4px;
+#sidebar-review .lens-tabs {
+  display: inline-grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
 }
 
 #sidebar-review .lens-list {
   min-height: 0;
   max-height: none;
+  height: 100%;
+}
+
+.lens-tab {
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(59, 74, 96, 0.08);
+  background: rgba(255, 255, 255, 0.72);
+  color: rgba(64, 79, 99, 0.82);
+}
+
+.lens-tab.active {
+  border-color: rgba(184, 156, 104, 0.42);
+  background: rgba(217, 187, 122, 0.16);
+  color: #7b5a2c;
 }
 
 .lens-metric {

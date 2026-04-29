@@ -45,6 +45,7 @@ const state = {
   graphTypeFilter: "all",
   graphSelectedNodeId: null,
   graphNeighborOnly: true,
+  lensTab: "queries",
   tasks: [],
   taskPollTimer: null,
   expandedTreePaths: new Set(),
@@ -96,6 +97,7 @@ const els = {
   searchResults: document.querySelector("#search-results"),
   lensQueries: document.querySelector("#lens-queries"),
   lensReview: document.querySelector("#lens-review"),
+  lensTabButtons: Array.from(document.querySelectorAll(".lens-tab")),
   taskList: document.querySelector("#task-list"),
   sourcesSummaryTotal: document.querySelector("#sources-summary-total"),
   sourcesSummaryRunning: document.querySelector("#sources-summary-running"),
@@ -419,6 +421,12 @@ for (const button of els.sourceScopeTabs) {
   button.addEventListener("click", () => {
     state.sourceTreeScope = button.dataset.scope
     renderSourceTreePanel()
+  })
+}
+for (const button of els.lensTabButtons) {
+  button.addEventListener("click", () => {
+    state.lensTab = button.dataset.lensTab || "queries"
+    renderLensPanel()
   })
 }
 els.editor.addEventListener("input", () => {

@@ -8,6 +8,13 @@ function escapeHtml(value) {
 export function renderLens({ els, state, onOpenFile, onRunIngest, onReviewAction, onAskQuestion, setStatus }) {
   els.lensQueries.innerHTML = ""
   els.lensReview.innerHTML = ""
+  for (const button of els.lensTabButtons || []) {
+    const active = button.dataset.lensTab === state.lensTab
+    button.classList.toggle("active", active)
+    button.setAttribute("aria-pressed", active ? "true" : "false")
+  }
+  els.lensQueries.hidden = state.lensTab !== "queries"
+  els.lensReview.hidden = state.lensTab !== "review"
 
   if (!state.selectedProjectId) {
     els.lensQueries.innerHTML = `<p class="empty">请选择一个项目来查看开放问题和待处理项。</p>`
