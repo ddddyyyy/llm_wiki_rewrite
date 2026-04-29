@@ -24,14 +24,15 @@ export async function rebuildWikiIndex(projectId, deps) {
 
   for (const file of files) {
     if (!file.path.endsWith(".md")) continue
-    if (file.path === "wiki/index.md" || file.path === "wiki/log.md" || file.path === "wiki/overview.md") continue
-    const title = titleFromFileName(file.path)
-    if (file.path.startsWith("wiki/entities/")) sections.实体.push(`- [[${path.basename(file.path, ".md")}]] - ${title}`)
-    if (file.path.startsWith("wiki/concepts/")) sections.概念.push(`- [[${path.basename(file.path, ".md")}]] - ${title}`)
-    if (file.path.startsWith("wiki/sources/")) sections.来源.push(`- [[${path.basename(file.path, ".md")}]] - ${title}`)
-    if (file.path.startsWith("wiki/queries/")) sections.问题.push(`- [[${path.basename(file.path, ".md")}]] - ${title}`)
-    if (file.path.startsWith("wiki/comparisons/")) sections.对比.push(`- [[${path.basename(file.path, ".md")}]] - ${title}`)
-    if (file.path.startsWith("wiki/synthesis/")) sections.综合.push(`- [[${path.basename(file.path, ".md")}]] - ${title}`)
+    if (file.path === "index.md" || file.path === "log.md" || file.path === "overview.md") continue
+    const wikiPath = `wiki/${file.path}`
+    const title = titleFromFileName(wikiPath)
+    if (file.path.startsWith("entities/")) sections.实体.push(`- [[${path.basename(file.path, ".md")}]] - ${title}`)
+    if (file.path.startsWith("concepts/")) sections.概念.push(`- [[${path.basename(file.path, ".md")}]] - ${title}`)
+    if (file.path.startsWith("sources/")) sections.来源.push(`- [[${path.basename(file.path, ".md")}]] - ${title}`)
+    if (file.path.startsWith("queries/")) sections.问题.push(`- [[${path.basename(file.path, ".md")}]] - ${title}`)
+    if (file.path.startsWith("comparisons/")) sections.对比.push(`- [[${path.basename(file.path, ".md")}]] - ${title}`)
+    if (file.path.startsWith("synthesis/")) sections.综合.push(`- [[${path.basename(file.path, ".md")}]] - ${title}`)
   }
 
   const content = `# Wiki 索引
