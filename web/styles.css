@@ -1134,8 +1134,22 @@ textarea {
   max-height: calc(100vh - 330px);
 }
 
+#sidebar-review .lens-panel {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+  min-height: calc(100vh - 250px);
+  height: calc(100vh - 250px);
+}
+
+#sidebar-review .lens-section {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  min-height: 0;
+}
+
 #sidebar-review .lens-list {
-  max-height: 180px;
+  min-height: 0;
+  max-height: none;
 }
 
 .lens-metric {
