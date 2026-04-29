@@ -626,7 +626,7 @@ textarea {
 .sources-import-history {
   display: grid;
   gap: 10px;
-  max-height: 180px;
+  max-height: 112px;
   overflow: auto;
   padding-right: 4px;
 }

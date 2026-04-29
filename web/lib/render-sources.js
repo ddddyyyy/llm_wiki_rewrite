@@ -34,7 +34,7 @@ export function renderSourcesWorkspace({ els, state, onOpenFile }) {
     return
   }
 
-  for (const batch of batches.slice(0, 6)) {
+  for (const batch of batches.slice(0, 1)) {
     const article = document.createElement("article")
     article.className = "import-batch-card"
     const roots = Array.isArray(batch.roots) && batch.roots.length > 0
