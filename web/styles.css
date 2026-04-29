@@ -157,6 +157,10 @@ button {
   height: 100%;
 }
 
+.app-shell:not(.is-projects-view) #projects-panel-sources {
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
 .app-shell.is-projects-view .projects-panel {
   width: min(100%, 860px);
   justify-self: center;
@@ -827,6 +831,7 @@ textarea {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
   min-height: 0;
+  height: 100%;
 }
 
 .tree-panel--column .tree {
@@ -835,6 +840,7 @@ textarea {
 
 .app-shell:not(.is-projects-view) .tree-panel--column .tree {
   max-height: none;
+  height: 100%;
   min-height: 0;
 }
 
@@ -1178,6 +1184,12 @@ textarea {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
   min-height: 0;
+}
+
+#sidebar-review .lens-section + .lens-section {
+  border-top: 1px solid rgba(59, 74, 96, 0.12);
+  padding-top: 12px;
+  margin-top: 4px;
 }
 
 #sidebar-review .lens-list {
