@@ -502,11 +502,17 @@ textarea {
 
 .sources-summary-card {
   display: grid;
-  gap: 14px;
-  padding: 16px;
+  gap: 10px;
+  padding: 12px 14px;
   border: 1px solid rgba(59, 74, 96, 0.08);
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.78);
+}
+
+.sources-summary-card .panel-copy {
+  margin: 2px 0 0;
+  font-size: 0.88rem;
+  line-height: 1.45;
 }
 
 .section-header {
@@ -569,24 +575,25 @@ textarea {
 .sources-summary-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 10px;
+  gap: 8px;
 }
 
 .sources-summary-item {
   display: grid;
-  gap: 4px;
-  padding: 12px;
-  border-radius: 10px;
+  gap: 2px;
+  padding: 9px 10px;
+  border-radius: 9px;
   border: 1px solid rgba(59, 74, 96, 0.08);
   background: rgba(248, 250, 252, 0.82);
 }
 
 .sources-summary-item strong {
-  font-size: 1.18rem;
+  font-size: 1.02rem;
   color: #8d6b36;
 }
 
 .sources-summary-item span {
+  font-size: 0.8rem;
   color: rgba(64, 79, 99, 0.72);
 }
 
