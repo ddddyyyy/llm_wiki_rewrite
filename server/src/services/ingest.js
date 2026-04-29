@@ -1,6 +1,7 @@
 import {
   detectPrimaryLanguage,
   outputLanguageInstruction,
+  readFrontmatterValue,
   resolveOutputLanguage,
   slugifyFileStem,
   titleFromFileName,
@@ -24,6 +25,44 @@ export function createIngestService({
   const isSupportedSource = (fileName) => /\.(md|txt|markdown|pdf|docx|pptx|xlsx|csv)$/i.test(fileName)
   const needsPersistedExtractedText = (fileName) => /\.(pdf|docx|pptx|xlsx)$/i.test(fileName)
 
+  function parseSourcesField(content) {
+    const match = String(content || "").match(/^---\n([\s\S]*?)\n---/)
+    if (!match) return []
+    const frontmatter = match[1]
+    const inline = frontmatter.match(/^sources:\s*\[(.*?)\]\s*$/m)
+    if (inline) {
+      return inline[1]
+        .split(",")
+        .map((item) => item.replace(/^["'\s]+|["'\s]+$/g, ""))
+        .filter(Boolean)
+    }
+    const lines = frontmatter.split("\n")
+    const sources = []
+    let inSources = false
+    for (const line of lines) {
+      if (/^sources:\s*$/.test(line.trim())) {
+        inSources = true
+        continue
+      }
+      if (!inSources) continue
+      if (!/^\s*-\s+/.test(line)) break
+      const item = line.replace(/^\s*-\s+/, "").replace(/^["']|["']$/g, "").trim()
+      if (item) sources.push(item)
+    }
+    return sources
+  }
+
+  async function shouldSkipExistingSourcePage(projectId, wikiRelative, sourcePath) {
+    const wikiFull = ensureInsideProject(projectId, wikiRelative).fullPath
+    if (!(await exists(wikiFull))) return false
+    const { contents } = await readProjectFile(projectId, wikiRelative)
+    const pageSources = parseSourcesField(contents)
+    const sourceFileName = sourcePath.split("/").pop() || sourcePath
+    const recordedRawPath = readFrontmatterValue(contents, "source_path")
+    if (pageSources.length === 0 && !recordedRawPath) return false
+    return pageSources.includes(sourceFileName) || recordedRawPath === sourcePath
+  }
+
   async function loadProjectContext(projectId) {
     const [schema, purpose, index, overview] = await Promise.all([
       readProjectFile(projectId, "schema.md").then((item) => item.contents).catch(() => ""),
@@ -38,12 +77,11 @@ export function createIngestService({
     const { force = false } = options
     const slug = slugifyFileStem(file.name)
     const wikiRelative = `wiki/sources/${slug}.md`
-    const wikiFull = ensureInsideProject(projectId, wikiRelative).fullPath
     const sourcePath = `raw/sources/${file.path}`
 
     onProgress({ stage: "reading", message: `正在读取 ${file.path}...`, file: file.path })
 
-    if (!force && (await exists(wikiFull))) {
+    if (!force && await shouldSkipExistingSourcePage(projectId, wikiRelative, sourcePath)) {
       if (needsPersistedExtractedText(file.name)) {
         const cached = await sourceTextCacheService.loadCachedText(projectId, sourcePath)
         if (!cached?.text?.trim()) {
