@@ -36,6 +36,11 @@ export async function handleRequest(req, res) {
 
     json(res, 404, { error: "Not found" })
   } catch (error) {
+    if (res.writableEnded) return
+    if (res.headersSent) {
+      res.end()
+      return
+    }
     json(res, 400, { error: error instanceof Error ? error.message : String(error) })
   }
 }

@@ -1,9 +1,19 @@
 export function json(res, status, payload) {
+  if (res.writableEnded) return
+  if (res.headersSent) {
+    res.end()
+    return
+  }
   res.writeHead(status, { "Content-Type": "application/json; charset=utf-8" })
   res.end(JSON.stringify(payload))
 }
 
 export function text(res, status, payload, contentType = "text/plain; charset=utf-8") {
+  if (res.writableEnded) return
+  if (res.headersSent) {
+    res.end()
+    return
+  }
   res.writeHead(status, { "Content-Type": contentType })
   res.end(payload)
 }
