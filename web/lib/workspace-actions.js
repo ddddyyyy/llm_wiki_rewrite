@@ -286,10 +286,9 @@ export function createWorkspaceActions(deps) {
     state.chatPending = false
     state.chatStreamingText = ""
     state.activeChatReferencePath = null
-    state.conversations = [
-      response.conversation,
-      ...state.conversations.filter((item) => item.id !== response.conversation.id),
-    ]
+    state.conversations = state.conversations.map((item) => (
+      item.id === response.conversation.id ? response.conversation : item
+    ))
     renderChatPanel()
     setStatus(`已打开对话：${response.conversation.title}`)
   }
