@@ -17,6 +17,32 @@ function formatImportTime(value) {
   })
 }
 
+function slugifySourceStem(relativePath) {
+  return String(relativePath || "")
+    .split("/")
+    .pop()
+    ?.replace(/\.[^.]+$/, "")
+    .normalize("NFKC")
+    .trim()
+    .replace(/\s+/g, "-")
+    .replace(/[^\p{L}\p{N}-]/gu, "")
+    .replace(/-+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .toLowerCase() || ""
+}
+
+function collectFilePaths(nodes, into = new Set()) {
+  for (const node of nodes || []) {
+    if (!node) continue
+    if (node.isDir) {
+      collectFilePaths(node.children || [], into)
+    } else if (node.path) {
+      into.add(node.path)
+    }
+  }
+  return into
+}
+
 export function renderSourcesWorkspace({
   els,
   state,
@@ -36,6 +62,8 @@ export function renderSourcesWorkspace({
 
   const batches = state.importHistory || []
   const batchIndex = Math.min(Math.max(state.sourcesBatchIndex || 0, 0), Math.max(batches.length - 1, 0))
+  const treeFilePaths = collectFilePaths(state.treeNodes || [])
+  const sourcePagePaths = new Set((state.knowledge?.sections?.sources || []).map((item) => item.path))
 
   els.sourcesImportHistory.innerHTML = ""
   if (batches.length === 0) {
@@ -60,8 +88,9 @@ export function renderSourcesWorkspace({
       : "未命名批次"
     const items = Array.isArray(batch.items) ? batch.items.slice(0, 4) : []
     const pendingSourcePaths = (Array.isArray(batch.sourcePaths) ? batch.sourcePaths : []).filter((sourcePath) => {
-      const pendingItems = state.lens?.reviewItems || []
-      return pendingItems.some((item) => item.kind === "missing-source-page" && item.path === sourcePath)
+      if (!treeFilePaths.has(sourcePath)) return false
+      const expectedSourcePagePath = `wiki/sources/${slugifySourceStem(sourcePath)}.md`
+      return !sourcePagePaths.has(expectedSourcePagePath)
     })
     els.sourcesBatchRun.disabled = pendingSourcePaths.length === 0
     els.sourcesBatchDiscard.disabled = pendingSourcePaths.length === 0
