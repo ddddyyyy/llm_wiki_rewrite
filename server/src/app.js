@@ -1,8 +1,11 @@
 import { createServer } from "node:http"
+import path from "node:path"
+import { fileURLToPath } from "node:url"
 import { createApiHandler } from "./routes/api.js"
 import { createStaticHandler } from "./routes/static.js"
 import { createAppServices, createRuntimeConfig } from "./bootstrap.js"
 import { json } from "./lib/http.js"
+
 const runtime = createRuntimeConfig()
 const services = createAppServices(runtime)
 const handleApi = createApiHandler(services)
@@ -43,6 +46,9 @@ export function startServer() {
   })
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+const entryPath = process.argv[1] ? path.resolve(process.argv[1]) : ""
+const currentModulePath = fileURLToPath(import.meta.url)
+
+if (entryPath && currentModulePath === entryPath) {
   startServer()
 }
