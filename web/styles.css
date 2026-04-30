@@ -277,6 +277,13 @@ button {
   overflow: hidden;
 }
 
+#detail-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 0;
+}
+
 .panel-copy,
 .current-path,
 .status-bar,
@@ -962,8 +969,10 @@ textarea {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 16px;
+  flex: 1 1 auto;
   min-height: 0;
   height: 100%;
+  align-items: stretch;
   overflow: hidden;
 }
 
@@ -979,7 +988,9 @@ textarea {
 
 .preview-panel {
   margin: 0;
+  display: block;
   min-height: 0;
+  height: 100%;
   overflow: auto;
   padding: 16px;
 }
@@ -995,6 +1006,7 @@ textarea {
 #preview {
   color: #304255;
   line-height: 1.65;
+  min-height: 100%;
 }
 
 #preview.markdown-rendered h1,
