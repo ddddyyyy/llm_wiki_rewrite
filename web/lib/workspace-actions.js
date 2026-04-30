@@ -102,11 +102,21 @@ export function createWorkspaceActions(deps) {
     return null
   }
 
-  async function handleProjectSelect(projectId) {
-    state.selectedProjectId = projectId
-    state.searchQuery = ""
-    state.searchResults = []
+  function resetProjectWorkspaceState() {
+    state.selectedPath = null
+    state.currentContents = ""
+    state.currentFileMode = "text"
+    state.currentDownloadUrl = ""
+    state.knowledge = null
+    state.graph = null
     state.lint = null
+    state.lens = null
+    state.importHistory = []
+    state.sourcesBatchIndex = 0
+    state.searchResults = []
+    state.treeNodes = []
+    state.tasks = []
+    state.taskIndex = 0
     state.conversations = []
     state.selectedConversationId = null
     state.chatMessagesData = []
@@ -114,7 +124,14 @@ export function createWorkspaceActions(deps) {
     state.chatStreamingText = ""
     state.activeChatReferencePath = null
     state.expandedTreePaths = new Set()
+  }
+
+  async function handleProjectSelect(projectId) {
+    state.selectedProjectId = projectId
+    state.searchQuery = ""
+    resetProjectWorkspaceState()
     renderProjectsPanel()
+    updateEditor()
     updateUploadState()
     renderShell()
     await actions.loadKnowledge()
@@ -551,8 +568,11 @@ export function createWorkspaceActions(deps) {
     setStatus("正在创建项目...")
     const response = await api.createProject({ name })
     state.selectedProjectId = response.project.id
+    state.searchQuery = ""
+    resetProjectWorkspaceState()
     els.newProjectName.value = ""
     await refreshProjects()
+    updateEditor()
     await loadKnowledge()
     await loadGraph()
     await loadLint()
