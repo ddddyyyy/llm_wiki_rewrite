@@ -1545,6 +1545,13 @@ textarea {
   color: rgba(64, 79, 99, 0.74);
 }
 
+.chat-panel--page .chat-empty {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
 .chat-empty--panel {
   display: grid;
   gap: 8px;
