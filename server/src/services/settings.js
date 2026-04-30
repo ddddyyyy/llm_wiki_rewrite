@@ -17,6 +17,9 @@ export function createSettingsService({ settingsPath, fs }) {
       output: {
         language: process.env.OUTPUT_LANGUAGE || "auto",
       },
+      chat: {
+        responseMode: process.env.CHAT_RESPONSE_MODE || "stream",
+      },
       search: {
         provider: process.env.SEARCH_PROVIDER || "none",
         apiKey: process.env.SEARCH_API_KEY || "",
@@ -44,6 +47,10 @@ export function createSettingsService({ settingsPath, fs }) {
         ...base.output,
         ...(next.output || {}),
       },
+      chat: {
+        ...(base.chat || {}),
+        ...(next.chat || {}),
+      },
       search: {
         ...base.search,
         ...(next.search || {}),
@@ -62,7 +69,12 @@ export function createSettingsService({ settingsPath, fs }) {
 
   async function loadSettings() {
     try {
-      return JSON.parse(await readFile(settingsPath, "utf8"))
+      const current = JSON.parse(await readFile(settingsPath, "utf8"))
+      const next = mergeSettings(defaultSettings(), current)
+      if (JSON.stringify(next) !== JSON.stringify(current)) {
+        await saveSettings(next)
+      }
+      return next
     } catch {
       const settings = defaultSettings()
       await saveSettings(settings)

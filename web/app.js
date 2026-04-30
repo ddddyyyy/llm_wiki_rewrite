@@ -111,6 +111,7 @@ const els = {
   llmMaxContextSize: document.querySelector("#llm-max-context-size"),
   llmEnabled: document.querySelector("#llm-enabled"),
   outputLanguage: document.querySelector("#output-language"),
+  chatResponseMode: document.querySelector("#chat-response-mode"),
   searchProvider: document.querySelector("#search-provider"),
   searchApiKey: document.querySelector("#search-api-key"),
   embeddingEnabled: document.querySelector("#embedding-enabled"),

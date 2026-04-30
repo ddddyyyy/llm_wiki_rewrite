@@ -334,6 +334,7 @@ export function createWorkspaceActions(deps) {
     els.llmMaxContextSize.value = String(settings.llm?.maxContextSize || 204800)
     els.llmEnabled.checked = Boolean(settings.llm?.enabled)
     els.outputLanguage.value = settings.output?.language || "auto"
+    els.chatResponseMode.value = settings.chat?.responseMode || "stream"
     els.searchProvider.value = settings.search?.provider || "none"
     els.searchApiKey.value = settings.search?.apiKey || ""
     els.embeddingEnabled.checked = Boolean(settings.embedding?.enabled)
@@ -357,6 +358,9 @@ export function createWorkspaceActions(deps) {
       },
       output: {
         language: els.outputLanguage.value,
+      },
+      chat: {
+        responseMode: els.chatResponseMode.value,
       },
       search: {
         provider: els.searchProvider.value,
@@ -701,38 +705,59 @@ export function createWorkspaceActions(deps) {
     setStatus("正在检索项目知识...")
     const abortController = new AbortController()
     activeChatAbortController = abortController
+    const useStreaming = els.chatResponseMode.value !== "sync"
     try {
-      await api.streamChat(
-        state.selectedProjectId,
-        question,
-        state.selectedConversationId,
-        {
-          onEvent(event, payload) {
-            if (event === "token") {
-              state.chatStreamingText += String(payload.token || "")
-              renderChatPanel()
-              return
-            }
-            if (event === "error") {
-              throw new Error(payload.error || "流式问答失败")
-            }
-            if (event === "final") {
-              state.selectedConversationId = payload.conversationId || state.selectedConversationId
-              state.chatMessagesData = hydrateChatMessages(payload.messages || [])
-              state.chatStreamingText = ""
-              state.activeChatReferencePath = null
-              if (payload.conversation) {
-                state.conversations = [
-                  payload.conversation,
-                  ...state.conversations.filter((item) => item.id !== payload.conversation.id),
-                ]
+      if (useStreaming) {
+        await api.streamChat(
+          state.selectedProjectId,
+          question,
+          state.selectedConversationId,
+          {
+            onEvent(event, payload) {
+              if (event === "token") {
+                state.chatStreamingText += String(payload.token || "")
+                renderChatPanel()
+                return
               }
-              setStatus("回答已生成")
-            }
+              if (event === "error") {
+                throw new Error(payload.error || "流式问答失败")
+              }
+              if (event === "final") {
+                state.selectedConversationId = payload.conversationId || state.selectedConversationId
+                state.chatMessagesData = hydrateChatMessages(payload.messages || [])
+                state.chatStreamingText = ""
+                state.activeChatReferencePath = null
+                if (payload.conversation) {
+                  state.conversations = [
+                    payload.conversation,
+                    ...state.conversations.filter((item) => item.id !== payload.conversation.id),
+                  ]
+                }
+                setStatus("回答已生成")
+              }
+            },
           },
-        },
-        abortController.signal,
-      )
+          abortController.signal,
+        )
+      } else {
+        const payload = await api.askChat(
+          state.selectedProjectId,
+          question,
+          state.selectedConversationId,
+          abortController.signal,
+        )
+        state.selectedConversationId = payload.conversationId || state.selectedConversationId
+        state.chatMessagesData = hydrateChatMessages(payload.messages || [])
+        state.chatStreamingText = ""
+        state.activeChatReferencePath = null
+        if (payload.conversation) {
+          state.conversations = [
+            payload.conversation,
+            ...state.conversations.filter((item) => item.id !== payload.conversation.id),
+          ]
+        }
+        setStatus("回答已生成")
+      }
     } catch (error) {
       state.chatMessagesData = state.chatMessagesData.slice(0, -1)
       if (abortController.signal.aborted) {
@@ -762,37 +787,57 @@ export function createWorkspaceActions(deps) {
     setStatus("正在重新生成上一条回答...")
     const abortController = new AbortController()
     activeChatAbortController = abortController
+    const useStreaming = els.chatResponseMode.value !== "sync"
     try {
-      await api.regenerateConversationStream(
-        state.selectedProjectId,
-        state.selectedConversationId,
-        {
-          onEvent(event, payload) {
-            if (event === "token") {
-              state.chatStreamingText += String(payload.token || "")
-              renderChatPanel()
-              return
-            }
-            if (event === "error") {
-              throw new Error(payload.error || "重新生成失败")
-            }
-            if (event === "final") {
-              state.selectedConversationId = payload.conversationId || state.selectedConversationId
-              state.chatMessagesData = hydrateChatMessages(payload.messages || [])
-              state.chatStreamingText = ""
-              state.activeChatReferencePath = null
-              if (payload.conversation) {
-                state.conversations = [
-                  payload.conversation,
-                  ...state.conversations.filter((item) => item.id !== payload.conversation.id),
-                ]
+      if (useStreaming) {
+        await api.regenerateConversationStream(
+          state.selectedProjectId,
+          state.selectedConversationId,
+          {
+            onEvent(event, payload) {
+              if (event === "token") {
+                state.chatStreamingText += String(payload.token || "")
+                renderChatPanel()
+                return
               }
-              setStatus("已重新生成回答")
-            }
+              if (event === "error") {
+                throw new Error(payload.error || "重新生成失败")
+              }
+              if (event === "final") {
+                state.selectedConversationId = payload.conversationId || state.selectedConversationId
+                state.chatMessagesData = hydrateChatMessages(payload.messages || [])
+                state.chatStreamingText = ""
+                state.activeChatReferencePath = null
+                if (payload.conversation) {
+                  state.conversations = [
+                    payload.conversation,
+                    ...state.conversations.filter((item) => item.id !== payload.conversation.id),
+                  ]
+                }
+                setStatus("已重新生成回答")
+              }
+            },
           },
-        },
-        abortController.signal,
-      )
+          abortController.signal,
+        )
+      } else {
+        const payload = await api.regenerateConversation(
+          state.selectedProjectId,
+          state.selectedConversationId,
+          abortController.signal,
+        )
+        state.selectedConversationId = payload.conversationId || state.selectedConversationId
+        state.chatMessagesData = hydrateChatMessages(payload.messages || [])
+        state.chatStreamingText = ""
+        state.activeChatReferencePath = null
+        if (payload.conversation) {
+          state.conversations = [
+            payload.conversation,
+            ...state.conversations.filter((item) => item.id !== payload.conversation.id),
+          ]
+        }
+        setStatus("已重新生成回答")
+      }
     } catch (error) {
       if (abortController.signal.aborted) {
         setStatus("已停止当前回答")

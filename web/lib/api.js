@@ -112,9 +112,10 @@ export function createApiClient() {
     deleteConversation: (projectId, conversationId) => request(`/api/projects/${encodeURIComponent(projectId)}/conversations/${encodeURIComponent(conversationId)}`, {
       method: "DELETE",
     }),
-    regenerateConversation: (projectId, conversationId) => request(`/api/projects/${encodeURIComponent(projectId)}/conversations/${encodeURIComponent(conversationId)}/regenerate`, {
+    regenerateConversation: (projectId, conversationId, signal) => request(`/api/projects/${encodeURIComponent(projectId)}/conversations/${encodeURIComponent(conversationId)}/regenerate`, {
       method: "POST",
       body: JSON.stringify({}),
+      signal,
     }),
     loadConversation: (projectId, conversationId) => request(`/api/projects/${encodeURIComponent(projectId)}/conversations/${encodeURIComponent(conversationId)}`),
     openFile: (projectId, relativePath) => {
@@ -148,9 +149,10 @@ export function createApiClient() {
       const params = new URLSearchParams({ q: query })
       return request(`/api/projects/${encodeURIComponent(projectId)}/search?${params.toString()}`)
     },
-    askChat: (projectId, question, conversationId) => request(`/api/projects/${encodeURIComponent(projectId)}/chat`, {
+    askChat: (projectId, question, conversationId, signal) => request(`/api/projects/${encodeURIComponent(projectId)}/chat`, {
       method: "POST",
       body: JSON.stringify({ question, conversationId }),
+      signal,
     }),
     streamChat: (projectId, question, conversationId, callbacks, signal) => requestStream(`/api/projects/${encodeURIComponent(projectId)}/chat-stream`, {
       method: "POST",
