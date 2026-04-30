@@ -228,13 +228,34 @@ export function createWorkspaceActions(deps) {
   async function loadTasks() {
     if (!state.selectedProjectId) {
       state.tasks = []
-      renderTasks({ els, state, formatTaskType, formatTaskStatus, formatTaskStage, onRetryTask: retryTask })
+      state.taskIndex = 0
+      renderTasks({
+        els,
+        state,
+        formatTaskType,
+        formatTaskStatus,
+        formatTaskStage,
+        onRetryTask: retryTask,
+        onChangeTaskIndex: changeTaskIndex,
+      })
       renderSourcesWorkspace()
       return
     }
     const previous = state.tasks
     state.tasks = (await api.loadTasks(state.selectedProjectId)).tasks
-    renderTasks({ els, state, formatTaskType, formatTaskStatus, formatTaskStage, onRetryTask: retryTask })
+    state.taskIndex = Math.min(
+      Math.max(state.taskIndex || 0, 0),
+      Math.max(state.tasks.length - 1, 0),
+    )
+    renderTasks({
+      els,
+      state,
+      formatTaskType,
+      formatTaskStatus,
+      formatTaskStage,
+      onRetryTask: retryTask,
+      onChangeTaskIndex: changeTaskIndex,
+    })
     renderSourcesWorkspace()
     const hadRunning = previous.some((task) => task.status === "running" || task.status === "queued")
     const hasRunning = state.tasks.some((task) => task.status === "running" || task.status === "queued")
@@ -245,6 +266,25 @@ export function createWorkspaceActions(deps) {
       await loadLens()
       await loadTree()
     }
+  }
+
+  function changeTaskIndex(direction) {
+    const count = Array.isArray(state.tasks) ? state.tasks.length : 0
+    if (count <= 1) return
+    if (direction === "prev") {
+      state.taskIndex = Math.max(0, (state.taskIndex || 0) - 1)
+    } else if (direction === "next") {
+      state.taskIndex = Math.min(count - 1, (state.taskIndex || 0) + 1)
+    }
+    renderTasks({
+      els,
+      state,
+      formatTaskType,
+      formatTaskStatus,
+      formatTaskStage,
+      onRetryTask: retryTask,
+      onChangeTaskIndex: changeTaskIndex,
+    })
   }
 
   async function loadConversations() {
