@@ -46,6 +46,8 @@ const state = {
   graphSelectedNodeId: null,
   graphNeighborOnly: true,
   lensTab: "queries",
+  sourcesRecordTab: "imports",
+  sourcesBatchIndex: 0,
   tasks: [],
   taskPollTimer: null,
   expandedTreePaths: new Set(),
@@ -103,6 +105,12 @@ const els = {
   sourcesSummaryRunning: document.querySelector("#sources-summary-running"),
   sourcesSummaryDone: document.querySelector("#sources-summary-done"),
   sourcesSummaryError: document.querySelector("#sources-summary-error"),
+  sourcesRecordCopy: document.querySelector("#sources-records-copy"),
+  sourcesRecordTabButtons: Array.from(document.querySelectorAll("[data-sources-tab]")),
+  sourcesRecordBatchNav: document.querySelector("#sources-record-batch-nav"),
+  sourcesBatchPrev: document.querySelector("#sources-batch-prev"),
+  sourcesBatchIndicator: document.querySelector("#sources-batch-indicator"),
+  sourcesBatchNext: document.querySelector("#sources-batch-next"),
   sourcesImportHistory: document.querySelector("#sources-import-history"),
   sourcesPendingList: document.querySelector("#sources-pending-list"),
   llmBaseUrl: document.querySelector("#llm-base-url"),
@@ -274,6 +282,20 @@ function renderSourcesWorkspace() {
     onRunBatchIngest: workspaceActions.runBatchIngest,
     onDiscardBatchPending: workspaceActions.discardBatchPending,
     onRemovePendingSource: workspaceActions.removePendingSource,
+    onChangeSourcesTab: (tab) => {
+      state.sourcesRecordTab = tab
+      renderSourcesWorkspace()
+    },
+    onChangeBatchIndex: (direction) => {
+      const count = Array.isArray(state.importHistory) ? state.importHistory.length : 0
+      if (count <= 1) return
+      if (direction === "prev") {
+        state.sourcesBatchIndex = Math.max(0, state.sourcesBatchIndex - 1)
+      } else if (direction === "next") {
+        state.sourcesBatchIndex = Math.min(count - 1, state.sourcesBatchIndex + 1)
+      }
+      renderSourcesWorkspace()
+    },
   })
 }
 

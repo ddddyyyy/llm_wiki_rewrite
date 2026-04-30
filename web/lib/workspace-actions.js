@@ -190,11 +190,16 @@ export function createWorkspaceActions(deps) {
   async function loadImportHistory() {
     if (!state.selectedProjectId) {
       state.importHistory = []
+      state.sourcesBatchIndex = 0
       renderSourcesWorkspace()
       return
     }
     const response = await api.loadImportHistory(state.selectedProjectId)
     state.importHistory = response.batches || []
+    state.sourcesBatchIndex = Math.min(
+      Math.max(state.sourcesBatchIndex, 0),
+      Math.max(state.importHistory.length - 1, 0),
+    )
     renderSourcesWorkspace()
   }
 

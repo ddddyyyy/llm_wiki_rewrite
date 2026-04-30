@@ -24,6 +24,8 @@ export function renderSourcesWorkspace({
   onRunBatchIngest,
   onDiscardBatchPending,
   onRemovePendingSource,
+  onChangeSourcesTab,
+  onChangeBatchIndex,
 }) {
   const tasks = state.tasks || []
   const running = tasks.filter((task) => task.status === "running" || task.status === "queued").length
@@ -35,13 +37,34 @@ export function renderSourcesWorkspace({
   els.sourcesSummaryError.textContent = String(error)
 
   const batches = state.importHistory || []
-  els.sourcesImportHistory.innerHTML = ""
-  if (batches.length === 0) {
-    els.sourcesImportHistory.innerHTML = `<p class="empty">还没有导入记录。你可以直接上传文件，或者一次导入整个文件夹。</p>`
-    return
+  const activeTab = state.sourcesRecordTab || "imports"
+  const batchIndex = Math.min(Math.max(state.sourcesBatchIndex || 0, 0), Math.max(batches.length - 1, 0))
+  els.sourcesImportHistory.hidden = activeTab !== "imports"
+  els.sourcesPendingList.hidden = activeTab !== "pending"
+  els.sourcesRecordBatchNav.hidden = activeTab !== "imports"
+  els.sourcesRecordCopy.textContent = activeTab === "imports"
+    ? "文件夹导入会保留层级结构，这里可以逐笔查看并只提取当前这一批。"
+    : "这里列出还没入知识库的来源文件。你可以逐个移除。"
+  for (const button of els.sourcesRecordTabButtons || []) {
+    const isActive = button.dataset.sourcesTab === activeTab
+    button.classList.toggle("active", isActive)
+    button.onclick = () => void onChangeSourcesTab?.(button.dataset.sourcesTab)
   }
 
-  for (const batch of batches.slice(0, 1)) {
+  els.sourcesImportHistory.innerHTML = ""
+  if (batches.length === 0) {
+    els.sourcesBatchIndicator.textContent = "0 / 0"
+    els.sourcesBatchPrev.disabled = true
+    els.sourcesBatchNext.disabled = true
+    els.sourcesImportHistory.innerHTML = `<p class="empty">还没有导入记录。你可以直接上传文件，或者一次导入整个文件夹。</p>`
+  } else {
+    els.sourcesBatchIndicator.textContent = `${batchIndex + 1} / ${batches.length}`
+    els.sourcesBatchPrev.disabled = batchIndex <= 0
+    els.sourcesBatchNext.disabled = batchIndex >= batches.length - 1
+    els.sourcesBatchPrev.onclick = () => void onChangeBatchIndex?.("prev")
+    els.sourcesBatchNext.onclick = () => void onChangeBatchIndex?.("next")
+
+    const batch = batches[batchIndex]
     const article = document.createElement("article")
     article.className = "import-batch-card"
     const roots = Array.isArray(batch.roots) && batch.roots.length > 0

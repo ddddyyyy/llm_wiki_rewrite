@@ -217,18 +217,23 @@
                   <div id="task-list" class="task-list"></div>
                 </section>
                 <section class="sources-records-card sources-records-card--compact">
-                  <div class="section-header">
-                    <div class="section-title">最近导入批次</div>
-                    <p class="panel-copy">文件夹导入会保留层级结构，这里会显示最近的导入记录。</p>
+                  <div class="section-header section-header--records">
+                    <div>
+                      <div class="section-title">来源记录</div>
+                      <p id="sources-records-copy" class="panel-copy">在最近导入批次和待处理来源文件之间切换查看。</p>
+                    </div>
+                    <div id="sources-record-tabs" class="lens-tabs">
+                      <button type="button" class="lens-tab active" data-sources-tab="imports">最近导入批次</button>
+                      <button type="button" class="lens-tab" data-sources-tab="pending">待处理来源文件</button>
+                    </div>
+                  </div>
+                  <div id="sources-record-batch-nav" class="sources-record-batch-nav">
+                    <button id="sources-batch-prev" type="button" class="mini-button">上一笔</button>
+                    <span id="sources-batch-indicator" class="item-meta">1 / 1</span>
+                    <button id="sources-batch-next" type="button" class="mini-button">下一笔</button>
                   </div>
                   <div id="sources-import-history" class="sources-import-history"></div>
-                </section>
-                <section class="sources-records-card sources-records-card--compact">
-                  <div class="section-header">
-                    <div class="section-title">待处理来源文件</div>
-                    <p class="panel-copy">这里列出还没入知识库的来源文件。你可以逐个移除，或者只提取最近一批。</p>
-                  </div>
-                  <div id="sources-pending-list" class="sources-pending-list"></div>
+                  <div id="sources-pending-list" class="sources-pending-list" hidden></div>
                 </section>
               </div>
             </section>

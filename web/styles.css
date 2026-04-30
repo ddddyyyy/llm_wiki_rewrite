@@ -644,10 +644,25 @@ textarea {
   padding: 14px 16px;
 }
 
+.section-header--records {
+  align-items: flex-start;
+}
+
+.section-header--records .lens-tabs {
+  flex-shrink: 0;
+}
+
 .sources-import-history {
   display: grid;
   gap: 10px;
   overflow: hidden;
+}
+
+.sources-record-batch-nav {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
 }
 
 .sources-pending-list {
