@@ -1,7 +1,8 @@
 import { readFile } from "node:fs/promises"
 import JSZip from "jszip"
 import iconv from "iconv-lite"
-import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs"
+
+let pdfJsModulePromise = null
 
 function cleanText(value = "") {
   const text = String(value || "").replace(/\r/g, "")
@@ -47,6 +48,7 @@ function getXmlAttribute(tagSource = "", attributeName) {
 }
 
 async function readPdf(filePath) {
+  const { getDocument } = await loadPdfJsModule()
   const data = new Uint8Array(await readFile(filePath))
   const pdf = await getDocument({
     data,
@@ -83,6 +85,45 @@ async function readPdf(filePath) {
     }
   }
   return parts.join("\n\n")
+}
+
+async function loadPdfJsModule() {
+  if (!pdfJsModulePromise) {
+    pdfJsModulePromise = (async () => {
+      if (!globalThis.DOMMatrix) {
+        const geometry = await import("../../../vendor/pdfjs/geometry.cjs")
+        globalThis.DOMMatrix = geometry.DOMMatrix
+        globalThis.DOMPoint = globalThis.DOMPoint || geometry.DOMPoint
+        globalThis.DOMRect = globalThis.DOMRect || geometry.DOMRect
+      }
+      if (!globalThis.ImageData) {
+        globalThis.ImageData = class ImageData {
+          constructor(data = [], width = 0, height = 0) {
+            this.data = data
+            this.width = width
+            this.height = height
+          }
+        }
+      }
+      if (!globalThis.Path2D) {
+        globalThis.Path2D = class Path2D {
+          addPath() {}
+        }
+      }
+      const originalWarn = console.warn
+      console.warn = (...args) => {
+        const text = args.map((item) => String(item || "")).join(" ")
+        if (text.includes('Cannot load "@napi-rs/canvas" package')) return
+        originalWarn(...args)
+      }
+      try {
+        return await import("../../../vendor/pdfjs/legacy/build/pdf.mjs")
+      } finally {
+        console.warn = originalWarn
+      }
+    })()
+  }
+  return pdfJsModulePromise
 }
 
 async function openZip(filePath) {

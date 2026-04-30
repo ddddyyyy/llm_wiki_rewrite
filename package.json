@@ -8,7 +8,6 @@
   },
   "dependencies": {
     "iconv-lite": "^0.7.2",
-    "jszip": "^3.10.1",
-    "pdfjs-dist": "^5.7.284"
+    "jszip": "^3.10.1"
   }
 }
