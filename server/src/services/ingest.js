@@ -185,7 +185,7 @@ export function createIngestService({
     }
   }
 
-  async function ingestProjectWithProgress(projectId, onProgress = () => {}) {
+  async function ingestProjectWithProgress(projectId, onProgress = () => {}, options = {}) {
     const settings = await loadSettings()
     if (!settings?.llm?.enabled) {
       throw new Error("请先启用并配置 LLM，才能运行知识提取。")
@@ -193,7 +193,16 @@ export function createIngestService({
     onProgress({ stage: "scanning", message: "正在扫描源文件..." })
     const sourceRoot = ensureInsideProject(projectId, "raw/sources").fullPath
     const files = await collectFiles(sourceRoot)
-    const sourceFiles = files.filter((file) => isSupportedSource(file.name))
+    const requestedSourcePaths = new Set(
+      (Array.isArray(options.sourcePaths) ? options.sourcePaths : [])
+        .map((item) => String(item || "").trim().replace(/^\/+/, ""))
+        .filter((item) => item.startsWith("raw/sources/")),
+    )
+    const sourceFiles = files.filter((file) => {
+      if (!isSupportedSource(file.name)) return false
+      if (requestedSourcePaths.size === 0) return true
+      return requestedSourcePaths.has(`raw/sources/${file.path}`)
+    })
     const ingested = []
     const skipped = []
     const projectContext = await loadProjectContext(projectId)

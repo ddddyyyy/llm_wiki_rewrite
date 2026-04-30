@@ -15,6 +15,23 @@ function summarizeUploadBatch(files, uploaded) {
     totalFiles: uploaded.length,
     roots,
     items: originalPaths.slice(0, 12),
+    sourcePaths: uploaded.slice(),
+  }
+}
+
+function normalizeBatch(batch) {
+  const items = Array.isArray(batch?.items) ? batch.items.filter(Boolean) : []
+  const sourcePaths = Array.isArray(batch?.sourcePaths) && batch.sourcePaths.length > 0
+    ? batch.sourcePaths.filter(Boolean)
+    : items.map((item) => item.startsWith("raw/") ? item : `raw/sources/${item}`)
+  return {
+    id: batch?.id || `import_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+    kind: batch?.kind || "files",
+    createdAt: batch?.createdAt || new Date().toISOString(),
+    totalFiles: Number(batch?.totalFiles || sourcePaths.length || items.length || 0),
+    roots: Array.isArray(batch?.roots) ? batch.roots.filter(Boolean) : [],
+    items,
+    sourcePaths,
   }
 }
 
@@ -23,7 +40,7 @@ export function createImportHistoryService({ projectService }) {
     try {
       const { contents } = await projectService.readProjectFile(projectId, ".llm-wiki/import-history.json")
       const parsed = JSON.parse(contents)
-      return Array.isArray(parsed) ? parsed : []
+      return Array.isArray(parsed) ? parsed.map(normalizeBatch) : []
     } catch {
       return []
     }
@@ -42,7 +59,7 @@ export function createImportHistoryService({ projectService }) {
     const current = await loadImportHistory(projectId)
     const next = [batch, ...current].slice(0, 12)
     await saveImportHistory(projectId, next)
-    return batch
+    return normalizeBatch(batch)
   }
 
   return {

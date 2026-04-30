@@ -139,7 +139,13 @@ export function createApiHandler(services) {
     const ingestMatch = pathname.match(/^\/api\/projects\/([^/]+)\/ingest$/)
     if (ingestMatch && req.method === "POST") {
       const projectId = decodeURIComponent(ingestMatch[1])
-      return json(res, 202, { task: await services.startIngestTask(projectId) })
+      const body = await readBody(req)
+      return json(res, 202, {
+        task: await services.startIngestTask(projectId, {
+          batchId: String(body.batchId || "").trim() || null,
+          sourcePaths: Array.isArray(body.sourcePaths) ? body.sourcePaths : [],
+        }),
+      })
     }
 
     const reingestMatch = pathname.match(/^\/api\/projects\/([^/]+)\/reingest-source$/)

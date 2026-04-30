@@ -137,9 +137,9 @@ export function createApiClient() {
         method: "DELETE",
       })
     },
-    startIngest: (projectId) => request(`/api/projects/${encodeURIComponent(projectId)}/ingest`, {
+    startIngest: (projectId, payload = {}) => request(`/api/projects/${encodeURIComponent(projectId)}/ingest`, {
       method: "POST",
-      body: JSON.stringify({}),
+      body: JSON.stringify(payload),
     }),
     reingestSource: (projectId, sourcePath) => request(`/api/projects/${encodeURIComponent(projectId)}/reingest-source`, {
       method: "POST",

@@ -115,9 +115,18 @@ export function createAppServices(runtime) {
     projectService,
   })
 
-  async function startIngestTask(projectId) {
+  async function startIngestTask(projectId, options = {}) {
     await taskService.loadTaskStore()
-    const task = taskService.createTask(projectId, "ingest")
+    const requestedSourcePaths = Array.isArray(options.sourcePaths)
+      ? options.sourcePaths.map((item) => String(item || "").trim()).filter(Boolean)
+      : []
+    const isBatchScoped = requestedSourcePaths.length > 0
+    const task = taskService.createTask(projectId, isBatchScoped ? "ingest-batch" : "ingest")
+    if (options.batchId) {
+      taskService.updateTask(task.id, { batchId: options.batchId, sourcePaths: requestedSourcePaths })
+    } else if (isBatchScoped) {
+      taskService.updateTask(task.id, { sourcePaths: requestedSourcePaths })
+    }
     await taskService.persistTaskStore()
 
     void (async () => {
@@ -131,11 +140,13 @@ export function createAppServices(runtime) {
             error: null,
           })
           await taskService.persistTaskStore()
-        })
+        }, { sourcePaths: requestedSourcePaths })
         taskService.updateTask(task.id, {
           status: "done",
           stage: "done",
-          message: `已提取 ${result.ingested.length} 个源文件，跳过 ${result.skipped.length} 个。`,
+          message: isBatchScoped
+            ? `已提取本批 ${result.ingested.length} 个源文件，跳过 ${result.skipped.length} 个。`
+            : `已提取 ${result.ingested.length} 个源文件，跳过 ${result.skipped.length} 个。`,
           result,
         })
         await taskService.persistTaskStore()

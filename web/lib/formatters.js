@@ -12,6 +12,7 @@ export const KNOWLEDGE_SECTIONS = [
 export function formatTaskType(value) {
   const mapping = {
     ingest: "知识提取",
+    "ingest-batch": "批次提取",
     "reingest-source": "单文件重提取",
   }
   return mapping[value] || value

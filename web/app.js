@@ -104,6 +104,7 @@ const els = {
   sourcesSummaryDone: document.querySelector("#sources-summary-done"),
   sourcesSummaryError: document.querySelector("#sources-summary-error"),
   sourcesImportHistory: document.querySelector("#sources-import-history"),
+  sourcesPendingList: document.querySelector("#sources-pending-list"),
   llmBaseUrl: document.querySelector("#llm-base-url"),
   llmModel: document.querySelector("#llm-model"),
   llmApiKey: document.querySelector("#llm-api-key"),
@@ -270,6 +271,9 @@ function renderSourcesWorkspace() {
     els,
     state,
     onOpenFile: workspaceActions.openFile,
+    onRunBatchIngest: workspaceActions.runBatchIngest,
+    onDiscardBatchPending: workspaceActions.discardBatchPending,
+    onRemovePendingSource: workspaceActions.removePendingSource,
   })
 }
 

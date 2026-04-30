@@ -635,16 +635,21 @@ export function createWorkspaceActions(deps) {
       : `已上传 ${response.uploaded.length} 个文件${hiddenSuffix}`)
   }
 
-  async function runIngest() {
+  async function runIngest(options = {}) {
     if (!state.selectedProjectId) return
     setStatus("正在运行知识提取...")
-    const response = await api.startIngest(state.selectedProjectId)
+    const response = await api.startIngest(state.selectedProjectId, {
+      batchId: options.batchId || "",
+      sourcePaths: Array.isArray(options.sourcePaths) ? options.sourcePaths : [],
+    })
     await loadTasks()
     restartTaskPolling()
     await loadGraph()
     await loadLint(true)
     await loadLens()
-    setStatus(`已启动提取任务 ${response.task.id}`)
+    setStatus(options.batchId
+      ? `已启动本批提取任务 ${response.task.id}`
+      : `已启动提取任务 ${response.task.id}`)
   }
 
   async function retryTask(task) {
@@ -655,7 +660,62 @@ export function createWorkspaceActions(deps) {
       return
     }
     setStatus(`正在重新开始任务 ${task.id}...`)
-    await runIngest()
+    await runIngest({
+      batchId: task?.batchId || "",
+      sourcePaths: Array.isArray(task?.sourcePaths) ? task.sourcePaths : [],
+    })
+  }
+
+  async function runBatchIngest(batch, sourcePaths) {
+    if (!state.selectedProjectId) return
+    const pendingPaths = (Array.isArray(sourcePaths) ? sourcePaths : []).filter(Boolean)
+    if (pendingPaths.length === 0) {
+      setStatus("这一批没有待处理文件了。")
+      return
+    }
+    await runIngest({
+      batchId: batch?.id || "",
+      sourcePaths: pendingPaths,
+    })
+  }
+
+  async function removePendingSource(relativePath) {
+    if (!state.selectedProjectId || !relativePath) return
+    const confirmed = window.confirm(`确认移除待处理来源文件“${relativePath}”吗？`)
+    if (!confirmed) return
+    await api.deleteSource(state.selectedProjectId, relativePath)
+    await refreshProjects()
+    await loadKnowledge()
+    await loadGraph()
+    await loadLint(true)
+    await loadLens()
+    await loadImportHistory()
+    await loadTree()
+    renderSourcesWorkspace()
+    setStatus(`已移除待处理来源文件：${relativePath}`)
+  }
+
+  async function discardBatchPending(batch, sourcePaths) {
+    if (!state.selectedProjectId) return
+    const pendingPaths = (Array.isArray(sourcePaths) ? sourcePaths : []).filter(Boolean)
+    if (pendingPaths.length === 0) {
+      setStatus("这一批没有待处理文件了。")
+      return
+    }
+    const confirmed = window.confirm(`确认取消这一批中的 ${pendingPaths.length} 个待处理文件吗？`)
+    if (!confirmed) return
+    for (const sourcePath of pendingPaths) {
+      await api.deleteSource(state.selectedProjectId, sourcePath)
+    }
+    await refreshProjects()
+    await loadKnowledge()
+    await loadGraph()
+    await loadLint(true)
+    await loadLens()
+    await loadImportHistory()
+    await loadTree()
+    renderSourcesWorkspace()
+    setStatus(`已取消本批 ${pendingPaths.length} 个待处理文件`)
   }
 
   async function reingestSource(relativePath) {
@@ -885,7 +945,10 @@ export function createWorkspaceActions(deps) {
     saveFile,
     uploadFiles,
     runIngest,
+    runBatchIngest,
     reingestSource,
+    discardBatchPending,
+    removePendingSource,
     retryTask,
     askChat,
     regenerateLastAnswer,

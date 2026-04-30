@@ -650,6 +650,15 @@ textarea {
   overflow: hidden;
 }
 
+.sources-pending-list {
+  display: grid;
+  gap: 8px;
+  max-height: 168px;
+  overflow: auto;
+  padding-right: 4px;
+  align-content: start;
+}
+
 .import-batch-card {
   display: grid;
   gap: 10px;
@@ -703,6 +712,39 @@ textarea {
 .import-batch-item:hover {
   background: rgba(217, 187, 122, 0.12);
   border-color: rgba(184, 156, 104, 0.28);
+}
+
+.import-batch-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.sources-pending-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 10px;
+  border: 1px solid rgba(59, 74, 96, 0.08);
+  border-radius: 10px;
+  background: rgba(248, 250, 252, 0.76);
+}
+
+.sources-pending-open {
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: rgba(36, 50, 68, 0.88);
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sources-pending-open:hover {
+  color: #8d6b36;
 }
 
 .fixed-panel {
