@@ -1,6 +1,5 @@
 import { readFile } from "node:fs/promises"
 import JSZip from "jszip"
-import iconv from "iconv-lite"
 
 let pdfJsModulePromise = null
 
@@ -250,9 +249,13 @@ async function readXlsx(filePath) {
 
 async function readTextLike(filePath) {
   const buffer = await readFile(filePath)
-  for (const encoding of ["utf8", "utf-8", "utf-8-sig", "gb18030", "gbk", "latin1"]) {
+  for (const encoding of ["utf-8", "gb18030", "gbk", "latin1"]) {
     try {
-      const text = iconv.decode(buffer, encoding)
+      const decoder = new TextDecoder(encoding, { fatal: false })
+      let text = decoder.decode(buffer)
+      if (encoding === "utf-8" && text.charCodeAt(0) === 0xFEFF) {
+        text = text.slice(1)
+      }
       if (cleanText(text)) return text
     } catch {
       // try next encoding
