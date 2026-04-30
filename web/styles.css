@@ -665,6 +665,10 @@ textarea {
   gap: 8px;
 }
 
+#sources-task-panel .task-list {
+  max-height: none;
+}
+
 .sources-pending-list {
   display: grid;
   gap: 8px;
