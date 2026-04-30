@@ -45,7 +45,7 @@ export function createRuntimeConfig() {
 
 export function createAppServices(runtime) {
   const projectFs = createProjectFs(runtime.projectsRoot)
-  const documentExtractor = createDocumentExtractor({ workspaceRoot: runtime.workspaceRoot })
+  const documentExtractor = createDocumentExtractor()
   const settingsService = createSettingsService({ settingsPath: runtime.settingsPath, fs: projectFs })
   const taskService = createTaskService({ tasksPath: runtime.tasksPath, fs: projectFs })
   const projectService = createProjectService({ projectFs })
