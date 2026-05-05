@@ -1,0 +1,7 @@
+.git
+.gitignore
+.DS_Store
+data
+tmp
+llm_wiki
+node_modules

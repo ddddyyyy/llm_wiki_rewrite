@@ -32,12 +32,16 @@ const __dirname = path.dirname(__filename)
 
 export function createRuntimeConfig() {
   const workspaceRoot = path.resolve(__dirname, "../..")
+  const dataRoot = process.env.DATA_ROOT
+    ? path.resolve(process.env.DATA_ROOT)
+    : path.join(workspaceRoot, "data")
   return {
     workspaceRoot,
-    projectsRoot: path.join(workspaceRoot, "data/projects"),
+    dataRoot,
+    projectsRoot: path.join(dataRoot, "projects"),
     publicRoot: path.join(workspaceRoot, "web"),
-    settingsPath: path.join(workspaceRoot, "data/settings.json"),
-    tasksPath: path.join(workspaceRoot, "data/tasks.json"),
+    settingsPath: path.join(dataRoot, "settings.json"),
+    tasksPath: path.join(dataRoot, "tasks.json"),
     port: Number(process.env.PORT || 4000),
     host: process.env.HOST || "127.0.0.1",
   }
