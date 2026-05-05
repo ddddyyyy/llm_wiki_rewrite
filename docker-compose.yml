@@ -1,0 +1,15 @@
+services:
+  llm-wiki:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: llm-wiki
+    restart: unless-stopped
+    ports:
+      - "${LLM_WIKI_PORT:-4000}:4000"
+    environment:
+      HOST: 0.0.0.0
+      PORT: 4000
+      DATA_ROOT: /app/data
+    volumes:
+      - "${LLM_WIKI_DATA_DIR:-./docker-data}:/app/data"
