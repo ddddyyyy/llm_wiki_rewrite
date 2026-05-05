@@ -43,6 +43,45 @@ function collectFilePaths(nodes, into = new Set()) {
   return into
 }
 
+function summarizeBatchStatus(sourcePaths, treeFilePaths, sourcePagePaths) {
+  const allPaths = (Array.isArray(sourcePaths) ? sourcePaths : []).filter(Boolean)
+  let pending = 0
+  let completed = 0
+  let canceled = 0
+
+  for (const sourcePath of allPaths) {
+    const expectedSourcePagePath = `wiki/sources/${slugifySourceStem(sourcePath)}.md`
+    if (sourcePagePaths.has(expectedSourcePagePath)) {
+      completed += 1
+    } else if (treeFilePaths.has(sourcePath)) {
+      pending += 1
+    } else {
+      canceled += 1
+    }
+  }
+
+  let label = "待处理"
+  if (allPaths.length === 0) {
+    label = "空批次"
+  } else if (completed === allPaths.length) {
+    label = "已完成"
+  } else if (canceled === allPaths.length) {
+    label = "已取消"
+  } else if (pending === allPaths.length) {
+    label = "待处理"
+  } else {
+    label = "部分完成"
+  }
+
+  return {
+    total: allPaths.length,
+    pending,
+    completed,
+    canceled,
+    label,
+  }
+}
+
 export function renderSourcesWorkspace({
   els,
   state,
@@ -92,6 +131,7 @@ export function renderSourcesWorkspace({
       const expectedSourcePagePath = `wiki/sources/${slugifySourceStem(sourcePath)}.md`
       return !sourcePagePaths.has(expectedSourcePagePath)
     })
+    const batchStatus = summarizeBatchStatus(batch.sourcePaths, treeFilePaths, sourcePagePaths)
     els.sourcesBatchRun.disabled = pendingSourcePaths.length === 0
     els.sourcesBatchDiscard.disabled = pendingSourcePaths.length === 0
     els.sourcesBatchRun.onclick = () => {
@@ -111,7 +151,12 @@ export function renderSourcesWorkspace({
         <span class="import-batch-count">${escapeHtml(batch.totalFiles || 0)} 个文件</span>
       </div>
       <div class="import-batch-roots">${escapeHtml(roots)}</div>
-      <div class="item-meta">待处理：${escapeHtml(pendingSourcePaths.length)} 个文件</div>
+      <div class="import-batch-status-row">
+        <span class="import-batch-status-badge">${escapeHtml(batchStatus.label)}</span>
+        <span class="item-meta">
+          待处理 ${escapeHtml(batchStatus.pending)} · 已完成 ${escapeHtml(batchStatus.completed)} · 已取消 ${escapeHtml(batchStatus.canceled)}
+        </span>
+      </div>
       <div class="import-batch-items">
         ${items.map((item) => `<button type="button" class="import-batch-item">${escapeHtml(item)}</button>`).join("")}
       </div>
