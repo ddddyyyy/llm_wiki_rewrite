@@ -94,6 +94,14 @@ function findLatestRelevantTask(tasks, sourcePath) {
   }) || null
 }
 
+function findActiveProjectIngestTask(tasks) {
+  const allTasks = Array.isArray(tasks) ? tasks : []
+  return allTasks.find((task) => {
+    if (!task || !["queued", "running"].includes(task.status)) return false
+    return task.type === "ingest" || task.type === "ingest-batch"
+  }) || null
+}
+
 function summarizeSourceItemState(sourcePath, batchStatus, treeFilePaths, sourcePageSourcePaths, task) {
   if (!treeFilePaths.has(sourcePath)) {
     return { label: "已取消", tone: "canceled", canReingest: false }
@@ -147,6 +155,7 @@ export function renderSourcesWorkspace({
       .map((item) => String(item.sourcePath || "").trim())
       .filter(Boolean),
   )
+  const activeIngestTask = findActiveProjectIngestTask(tasks)
 
   els.sourcesImportHistory.innerHTML = ""
   if (batches.length === 0) {
@@ -175,6 +184,20 @@ export function renderSourcesWorkspace({
       return !sourcePageSourcePaths.has(sourcePath)
     })
     const batchStatus = summarizeBatchStatus(batch.sourcePaths, treeFilePaths, sourcePageSourcePaths)
+    const batchTask = tasks.find((task) => task?.batchId && task.batchId === batch.id) || null
+    const activeBatchTask = batchTask && ["queued", "running"].includes(batchTask.status) ? batchTask : null
+    const shouldReflectGenericIngest = !activeBatchTask && activeIngestTask?.type === "ingest" && pendingSourcePaths.length > 0
+    const effectiveBatchStatus = shouldReflectGenericIngest
+      ? {
+          ...batchStatus,
+          label: activeIngestTask?.status === "running" ? "提取中" : "排队中",
+        }
+      : activeBatchTask
+        ? {
+            ...batchStatus,
+            label: activeBatchTask.status === "running" ? "提取中" : "排队中",
+          }
+        : batchStatus
     els.sourcesBatchRun.disabled = pendingSourcePaths.length === 0
     els.sourcesBatchDiscard.disabled = pendingSourcePaths.length === 0
     els.sourcesBatchRun.onclick = () => {
@@ -195,7 +218,7 @@ export function renderSourcesWorkspace({
       </div>
       <div class="import-batch-roots">${escapeHtml(roots)}</div>
       <div class="import-batch-status-row">
-        <span class="import-batch-status-badge">${escapeHtml(batchStatus.label)}</span>
+        <span class="import-batch-status-badge">${escapeHtml(effectiveBatchStatus.label)}</span>
         <span class="item-meta">
           待处理 ${escapeHtml(batchStatus.pending)} · 已完成 ${escapeHtml(batchStatus.completed)} · 已取消 ${escapeHtml(batchStatus.canceled)}
         </span>
@@ -204,18 +227,25 @@ export function renderSourcesWorkspace({
         ${items.map((item) => {
           const targetPath = item.startsWith("raw/") ? item : `raw/sources/${item}`
           const existsInTree = treeFilePaths.has(targetPath)
-          const task = findLatestRelevantTask(tasks, targetPath)
+          const task = activeBatchTask || findLatestRelevantTask(tasks, targetPath)
           const itemState = summarizeSourceItemState(targetPath, batchStatus, treeFilePaths, sourcePageSourcePaths, task)
+          const activeState = shouldReflectGenericIngest && itemState.label === "待处理"
+            ? {
+                label: activeIngestTask?.status === "running" && String(activeIngestTask.file || "") === targetPath ? "提取中" : "排队中",
+                tone: activeIngestTask?.status === "running" && String(activeIngestTask.file || "") === targetPath ? "running" : "queued",
+                canReingest: false,
+              }
+            : itemState
           return `
             <div class="import-batch-item-row">
               <button type="button" class="import-batch-item">${escapeHtml(item)}</button>
               <div class="import-batch-item-side">
-                <span class="import-batch-file-status ${escapeHtml(statusTone(itemState.tone))}">${escapeHtml(itemState.label)}</span>
+                <span class="import-batch-file-status ${escapeHtml(statusTone(activeState.tone))}">${escapeHtml(activeState.label)}</span>
                 <button
                   type="button"
                   class="mini-button import-batch-reingest"
                   data-path="${escapeHtml(targetPath)}"
-                  ${existsInTree && itemState.canReingest ? "" : "disabled"}
+                  ${existsInTree && activeState.canReingest ? "" : "disabled"}
                 >重新提取</button>
               </div>
             </div>
