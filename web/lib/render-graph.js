@@ -127,6 +127,9 @@ export function renderGraphView({ els, state, onOpenFile, onPreviewNode }) {
   const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg")
   svg.setAttribute("viewBox", `0 0 ${width} ${height}`)
   svg.setAttribute("class", "graph-svg")
+  const edgeRecords = []
+  const nodeElements = new Map()
+  const positionById = new Map(laidOut.map((node) => [node.id, { x: node.x, y: node.y }]))
 
   const selectedNodeId = state.graphSelectedNodeId
   const neighborIds = new Set()
@@ -151,6 +154,7 @@ export function renderGraphView({ els, state, onOpenFile, onPreviewNode }) {
     line.setAttribute("stroke-width", String(isActive ? Math.min(4.8, 1.6 + edge.weight * 0.75) : 1.4))
     line.setAttribute("opacity", state.graphNeighborOnly && selectedNodeId && !isActive ? EDGE_STYLES.dimmedOpacity : "1")
     svg.appendChild(line)
+    const edgeRecord = { edge, line, sourceId: edge.source, targetId: edge.target, label: null }
 
     if (selectedNodeId && isActive) {
       const label = document.createElementNS("http://www.w3.org/2000/svg", "text")
@@ -161,6 +165,36 @@ export function renderGraphView({ els, state, onOpenFile, onPreviewNode }) {
       label.setAttribute("font-size", "10")
       label.textContent = formatEdgeWeight(edge.weight)
       svg.appendChild(label)
+      edgeRecord.label = label
+    }
+    edgeRecords.push(edgeRecord)
+  }
+
+  const syncNodePosition = (nodeId, x, y) => {
+    const position = positionById.get(nodeId)
+    if (!position) return
+    position.x = x
+    position.y = y
+    const elements = nodeElements.get(nodeId)
+    if (elements) {
+      elements.circle.setAttribute("cx", String(x))
+      elements.circle.setAttribute("cy", String(y))
+      elements.label.setAttribute("x", String(x))
+      elements.label.setAttribute("y", String(y + elements.radius + 14))
+    }
+    for (const record of edgeRecords) {
+      if (record.sourceId !== nodeId && record.targetId !== nodeId) continue
+      const sourcePosition = positionById.get(record.sourceId)
+      const targetPosition = positionById.get(record.targetId)
+      if (!sourcePosition || !targetPosition) continue
+      record.line.setAttribute("x1", String(sourcePosition.x))
+      record.line.setAttribute("y1", String(sourcePosition.y))
+      record.line.setAttribute("x2", String(targetPosition.x))
+      record.line.setAttribute("y2", String(targetPosition.y))
+      if (record.label) {
+        record.label.setAttribute("x", String((sourcePosition.x + targetPosition.x) / 2))
+        record.label.setAttribute("y", String((sourcePosition.y + targetPosition.y) / 2 - 4))
+      }
     }
   }
 
@@ -212,16 +246,18 @@ export function renderGraphView({ els, state, onOpenFile, onPreviewNode }) {
     const title = document.createElementNS("http://www.w3.org/2000/svg", "title")
     title.textContent = `${node.title}\n${node.path}\n类型：${node.type}\n连接数：${node.degree || 0}`
     group.appendChild(title)
+    nodeElements.set(node.id, { circle, label, radius: node.r })
 
     group.addEventListener("pointerdown", (event) => {
       event.preventDefault()
       event.stopPropagation()
-      const startPoint = clientPointToSvg(event, svg, width, height)
+      const currentSvg = () => els.graphStage.querySelector("svg") || svg
+      const startPoint = clientPointToSvg(event, currentSvg(), width, height)
       const offsetX = startPoint.x - node.x
       const offsetY = startPoint.y - node.y
       let moved = false
       const move = (moveEvent) => {
-        const point = clientPointToSvg(moveEvent, svg, width, height)
+        const point = clientPointToSvg(moveEvent, currentSvg(), width, height)
         const nextX = Math.max(24, Math.min(width - 24, point.x - offsetX))
         const nextY = Math.max(24, Math.min(height - 24, point.y - offsetY))
         if (!moved) {
@@ -238,11 +274,14 @@ export function renderGraphView({ els, state, onOpenFile, onPreviewNode }) {
             y: nextY,
           },
         }
-        renderGraphView({ els, state, onOpenFile, onPreviewNode })
+        syncNodePosition(node.id, nextX, nextY)
       }
       const up = () => {
         window.removeEventListener("pointermove", move)
         window.removeEventListener("pointerup", up)
+        if (moved) {
+          renderGraphView({ els, state, onOpenFile, onPreviewNode })
+        }
       }
       window.addEventListener("pointermove", move)
       window.addEventListener("pointerup", up)
