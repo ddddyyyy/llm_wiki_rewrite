@@ -1,13 +1,9 @@
 const TYPE_COLORS = {
   overview: "#d9bb7a",
-  index: "#9ecbff",
   source: "#8fd3a6",
   concept: "#f08da7",
   entity: "#c5a3ff",
-  query: "#ffb86b",
-  comparison: "#7ad7d1",
-  synthesis: "#f4e58d",
-  page: "#b7bdc9",
+  other: "#b7bdc9",
 }
 
 const EDGE_STYLES = {
@@ -43,6 +39,13 @@ function layoutNodes(nodes, width, height) {
   })
 }
 
+function formatEdgeWeight(weight) {
+  const value = Number(weight || 0)
+  if (!Number.isFinite(value)) return "1.0"
+  if (Math.abs(value - Math.round(value)) < 0.001) return `${Math.round(value)}.0`
+  return value.toFixed(1)
+}
+
 export function renderGraphView({ els, state, onOpenFile, onPreviewNode }) {
   els.graphStage.innerHTML = ""
   els.graphSummary.innerHTML = ""
@@ -76,7 +79,7 @@ export function renderGraphView({ els, state, onOpenFile, onPreviewNode }) {
 
   const typeOptions = ["all", ...Object.keys(stats.typeCounts || {})]
   els.graphTypeFilter.innerHTML = typeOptions
-    .map((type) => `<option value="${escapeHtml(type)}"${state.graphTypeFilter === type ? " selected" : ""}>${type === "all" ? "全部类型" : escapeHtml(type)}</option>`)
+    .map((type) => `<option value="${escapeHtml(type)}"${state.graphTypeFilter === type ? " selected" : ""}>${type === "all" ? "全部类型" : escapeHtml(type[0].toUpperCase() + type.slice(1))}</option>`)
     .join("")
 
   const filteredNodes = nodes.filter((node) => state.graphTypeFilter === "all" || node.type === state.graphTypeFilter)
@@ -119,6 +122,18 @@ export function renderGraphView({ els, state, onOpenFile, onPreviewNode }) {
     line.setAttribute("stroke-width", String(isActive ? Math.min(4.8, 1.6 + edge.weight * 0.75) : 1.4))
     line.setAttribute("opacity", state.graphNeighborOnly && selectedNodeId && !isActive ? EDGE_STYLES.dimmedOpacity : "1")
     svg.appendChild(line)
+
+    const label = document.createElementNS("http://www.w3.org/2000/svg", "text")
+    label.setAttribute("x", String((source.x + target.x) / 2))
+    label.setAttribute("y", String((source.y + target.y) / 2 - 4))
+    label.setAttribute("text-anchor", "middle")
+    label.setAttribute("fill", "rgba(68, 82, 104, 0.82)")
+    label.setAttribute("font-size", "10")
+    label.textContent = formatEdgeWeight(edge.weight)
+    if (state.graphNeighborOnly && selectedNodeId && !isActive) {
+      label.setAttribute("opacity", EDGE_STYLES.dimmedOpacity)
+    }
+    svg.appendChild(label)
   }
 
   for (const node of laidOut) {
@@ -169,6 +184,6 @@ export function renderGraphView({ els, state, onOpenFile, onPreviewNode }) {
 
   els.graphLegend.innerHTML = Object.entries(TYPE_COLORS)
     .filter(([type]) => Object.keys(stats.typeCounts || {}).includes(type))
-    .map(([type, color]) => `<span class="graph-legend-item"><i style="background:${color}"></i>${escapeHtml(type)}</span>`)
+    .map(([type, color]) => `<span class="graph-legend-item"><i style="background:${color}"></i>${escapeHtml(type[0].toUpperCase() + type.slice(1))}</span>`)
     .join("")
 }

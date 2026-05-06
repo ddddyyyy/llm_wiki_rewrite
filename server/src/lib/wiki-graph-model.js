@@ -4,14 +4,23 @@ import { readFrontmatterValue, titleFromFileName } from "./text.js"
 
 function sectionTypeForPath(filePath) {
   if (filePath === "wiki/overview.md") return "overview"
-  if (filePath === "wiki/index.md") return "index"
+  if (filePath === "wiki/index.md") return "other"
   if (filePath.startsWith("wiki/sources/")) return "source"
   if (filePath.startsWith("wiki/concepts/")) return "concept"
   if (filePath.startsWith("wiki/entities/")) return "entity"
-  if (filePath.startsWith("wiki/queries/")) return "query"
-  if (filePath.startsWith("wiki/comparisons/")) return "comparison"
-  if (filePath.startsWith("wiki/synthesis/")) return "synthesis"
-  return "page"
+  if (filePath.startsWith("wiki/queries/")) return "other"
+  if (filePath.startsWith("wiki/comparisons/")) return "other"
+  if (filePath.startsWith("wiki/synthesis/")) return "other"
+  return "other"
+}
+
+function normalizeGraphNodeType(type, filePath) {
+  const raw = String(type || "").trim().toLowerCase()
+  if (raw === "overview") return "overview"
+  if (raw === "source") return "source"
+  if (raw === "concept") return "concept"
+  if (raw === "entity") return "entity"
+  return sectionTypeForPath(filePath)
 }
 
 function candidateWikiPathsFromSlug(slug) {
@@ -30,7 +39,7 @@ export async function buildWikiGraphModel(projectId, deps) {
   const { ensureInsideProject, collectFiles, readProjectFile } = deps
   const wikiRoot = ensureInsideProject(projectId, "wiki").fullPath
   const files = await collectFiles(wikiRoot).catch(() => [])
-  const excludedPaths = new Set(["log.md", "index.md", "overview.md"])
+  const excludedPaths = new Set(["log.md"])
   const markdownFiles = files.filter((file) => file.path.endsWith(".md") && !excludedPaths.has(file.path))
 
   const nodesByPath = new Map()
@@ -56,7 +65,7 @@ export async function buildWikiGraphModel(projectId, deps) {
       path: wikiPath,
       slug,
       title: readFrontmatterValue(contents, "title") || titleFromFileName(wikiPath),
-      type: readFrontmatterValue(contents, "type") || sectionTypeForPath(wikiPath),
+      type: normalizeGraphNodeType(readFrontmatterValue(contents, "type"), wikiPath),
       created: readFrontmatterValue(contents, "created"),
       updated: readFrontmatterValue(contents, "updated"),
       degree: 0,
