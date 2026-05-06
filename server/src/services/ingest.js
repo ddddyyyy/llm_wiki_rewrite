@@ -1,5 +1,4 @@
 import {
-  detectPrimaryLanguage,
   outputLanguageInstruction,
   readFrontmatterValue,
   resolveOutputLanguage,
@@ -107,31 +106,35 @@ export function createIngestService({
       }
     }
     await sourceTextCacheService.saveCachedText(projectId, sourcePath, raw)
-    const detectedLanguage = detectPrimaryLanguage(raw)
     const outputLanguage = resolveOutputLanguage(settings, raw)
 
     onProgress({ stage: "analyzing", message: `正在分析 ${file.path}...`, file: file.path })
+    const truncatedSource = raw.slice(0, 50000)
+    const promptLanguage = outputLanguage === "English" ? "en" : "zh-CN"
     const analysis = await callChatModel(settings, [
       {
         role: "system",
-        content: [
-          detectedLanguage === "en"
-            ? "You are a precise research analysis assistant."
-            : "你是一个严谨的研究分析助手。",
-          outputLanguageInstruction(outputLanguage),
-        ].join(" "),
-      },
-      {
-        role: "user",
         content: buildAnalysisPrompt({
           schema: projectContext.schema,
           purpose: projectContext.purpose,
           index: projectContext.index,
           overview: projectContext.overview,
           sourcePath,
-          sourceContent: raw.slice(0, 50000),
-          targetLanguage: outputLanguage === "English" ? "en" : "zh-CN",
+          sourceContent: truncatedSource,
+          targetLanguage: promptLanguage,
         }),
+      },
+      {
+        role: "user",
+        content: [
+          promptLanguage === "en" ? "Analyze this source document:" : "请分析这个来源文档：",
+          "",
+          promptLanguage === "en" ? `**File:** ${file.name}` : `**文件：** ${file.name}`,
+          "",
+          "---",
+          "",
+          truncatedSource,
+        ].join("\n"),
       },
     ])
 
@@ -139,23 +142,50 @@ export function createIngestService({
     const generation = await callChatModel(settings, [
       {
         role: "system",
-        content: [
-          "你只能输出 wiki FILE blocks。",
-          outputLanguageInstruction(outputLanguage),
-          "中文标题的页面可以直接使用中文文件名，不要转成拼音；英文标题再使用 kebab-case。",
-        ].join(" "),
-      },
-      {
-        role: "user",
         content: buildGenerationPrompt({
           schema: projectContext.schema,
           purpose: projectContext.purpose,
           index: projectContext.index,
           overview: projectContext.overview,
           sourcePath,
-          analysis,
-          targetLanguage: outputLanguage === "English" ? "en" : "zh-CN",
+          sourceContent: truncatedSource,
+          targetLanguage: promptLanguage,
         }),
+      },
+      {
+        role: "user",
+        content: [
+          promptLanguage === "en"
+            ? `Source document to process: **${file.name}**`
+            : `待处理的来源文档：**${file.name}**`,
+          "",
+          promptLanguage === "en"
+            ? "The Stage 1 analysis below is CONTEXT to inform your output. Do NOT echo its tables, bullet points, or prose."
+            : "下面的第一阶段分析仅作为生成时的上下文，请不要回显其中的表格、要点或段落。",
+          promptLanguage === "en"
+            ? "Your output must be FILE blocks as specified in the system prompt — nothing else."
+            : "你的输出必须严格遵循 system prompt 中定义的 FILE blocks 格式，不要输出其他内容。",
+          "",
+          promptLanguage === "en"
+            ? "## Stage 1 Analysis (context only — do not repeat)"
+            : "## 第一阶段分析（仅作上下文，请勿重复）",
+          "",
+          analysis,
+          "",
+          promptLanguage === "en" ? "## Original Source Content" : "## 原始来源内容",
+          "",
+          truncatedSource,
+          "",
+          "---",
+          "",
+          promptLanguage === "en"
+            ? `Now emit the FILE blocks for the wiki files derived from **${file.name}**.`
+            : `现在请直接输出由 **${file.name}** 派生的 wiki FILE blocks。`,
+          promptLanguage === "en"
+            ? "Your response MUST begin with `---FILE:` as the very first characters. No preamble. Start immediately."
+            : "你的回复必须以 `---FILE:` 作为最开头的字符，不要写前言，不要解释，直接开始。",
+          outputLanguageInstruction(outputLanguage),
+        ].join("\n"),
       },
     ])
 
