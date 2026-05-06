@@ -117,6 +117,12 @@ function findActiveProjectIngestTask(tasks) {
   }) || null
 }
 
+function findLatestBatchTask(tasks, batchId) {
+  if (!batchId) return null
+  const allTasks = Array.isArray(tasks) ? tasks : []
+  return allTasks.find((task) => task?.batchId === batchId) || null
+}
+
 function normalizeSourceTaskPath(value) {
   const path = String(value || "").trim().replace(/^\/+/, "")
   if (!path) return ""
@@ -138,8 +144,8 @@ function summarizeSourceItemState(sourcePath, batchStatus, treeFilePaths, source
   if (task?.status === "queued") {
     return { label: "排队中", tone: "queued", canReingest: false }
   }
-  if (task?.status === "error" && (String(task.file || "") === sourcePath || String(task.sourcePath || "") === sourcePath)) {
-    return { label: "提取失败", tone: "error", canReingest: true }
+  if (task?.status === "error" && (normalizeSourceTaskPath(task.file) === sourcePath || normalizeSourceTaskPath(task.sourcePath) === sourcePath)) {
+    return { label: "提取失败", tone: "error", canReingest: false }
   }
   if (sourcePageSourcePaths.has(sourcePath)) {
     return { label: "已完成", tone: "done", canReingest: true }
@@ -183,6 +189,8 @@ export function renderSourcesWorkspace({
     els.sourcesBatchIndicator.textContent = "0 / 0"
     els.sourcesBatchPrev.disabled = true
     els.sourcesBatchNext.disabled = true
+    els.sourcesBatchRun.hidden = true
+    els.sourcesBatchDiscard.hidden = true
     els.sourcesBatchRun.disabled = true
     els.sourcesBatchDiscard.disabled = true
     els.sourcesImportHistory.innerHTML = `<p class="empty">还没有导入记录。你可以直接上传文件，或者一次导入整个文件夹。</p>`
@@ -205,9 +213,10 @@ export function renderSourcesWorkspace({
       return !sourcePageSourcePaths.has(sourcePath)
     })
     const batchStatus = summarizeBatchStatus(batch.sourcePaths, treeFilePaths, sourcePageSourcePaths)
-    const batchTask = tasks.find((task) => task?.batchId && task.batchId === batch.id) || null
+    const batchTask = findLatestBatchTask(tasks, batch.id)
     const activeBatchTask = batchTask && ["queued", "running"].includes(batchTask.status) ? batchTask : null
     const shouldReflectGenericIngest = !activeBatchTask && activeIngestTask?.type === "ingest" && pendingSourcePaths.length > 0
+    const canShowBatchActions = Boolean(batchTask?.status === "error" && pendingSourcePaths.length > 0)
     const effectiveBatchStatus = shouldReflectGenericIngest
       ? {
           ...batchStatus,
@@ -219,14 +228,16 @@ export function renderSourcesWorkspace({
             label: activeBatchTask.status === "running" ? "提取中" : "排队中",
           }
         : batchStatus
-    els.sourcesBatchRun.disabled = pendingSourcePaths.length === 0
-    els.sourcesBatchDiscard.disabled = pendingSourcePaths.length === 0
+    els.sourcesBatchRun.hidden = !canShowBatchActions
+    els.sourcesBatchDiscard.hidden = !canShowBatchActions
+    els.sourcesBatchRun.disabled = !canShowBatchActions
+    els.sourcesBatchDiscard.disabled = !canShowBatchActions
     els.sourcesBatchRun.onclick = () => {
-      if (pendingSourcePaths.length === 0) return
+      if (!canShowBatchActions) return
       void onRunBatchIngest?.(batch, pendingSourcePaths)
     }
     els.sourcesBatchDiscard.onclick = () => {
-      if (pendingSourcePaths.length === 0) return
+      if (!canShowBatchActions) return
       void onDiscardBatchPending?.(batch, pendingSourcePaths)
     }
     article.innerHTML = `
@@ -275,7 +286,7 @@ export function renderSourcesWorkspace({
                   type="button"
                   class="mini-button import-batch-reingest"
                   data-path="${escapeHtml(targetPath)}"
-                  ${existsInTree && activeState.canReingest ? "" : "disabled"}
+                  ${existsInTree && activeState.canReingest ? "" : "hidden disabled"}
                 >重新提取</button>
               </div>
             </div>

@@ -91,7 +91,6 @@ const els = {
   uploadFolderButton: document.querySelector("#upload-folder-button"),
   uploadFolderInput: document.querySelector("#upload-folder-input"),
   uploadFolderLabel: document.querySelector("#upload-folder-label"),
-  ingestButton: document.querySelector("#ingest-button"),
   knowledgeTabs: document.querySelector("#knowledge-tabs"),
   knowledgeList: document.querySelector("#knowledge-list"),
   searchInput: document.querySelector("#search-input"),
@@ -239,7 +238,6 @@ function updateUploadState() {
   els.uploadFolderButton.classList.toggle("disabled", !enabled)
   els.uploadInput.disabled = !enabled
   els.uploadFolderInput.disabled = !enabled
-  els.ingestButton.disabled = !enabled
   els.searchInput.disabled = !enabled
   els.searchButton.disabled = !enabled
   els.chatSendButton.disabled = !enabled || (!state.chatPending && !els.chatInput.value.trim())
@@ -445,7 +443,6 @@ els.deleteSourceButton.addEventListener("click", () => {
 })
 els.uploadInput.addEventListener("change", () => void workspaceActions.uploadFiles())
 els.uploadFolderInput.addEventListener("change", () => void workspaceActions.uploadFiles("folder"))
-els.ingestButton.addEventListener("click", () => void workspaceActions.runIngest())
 els.searchButton.addEventListener("click", () => void workspaceActions.runSearch())
 els.chatSendButton.addEventListener("click", () => void workspaceActions.askChat())
 els.chatInput.addEventListener("input", () => {

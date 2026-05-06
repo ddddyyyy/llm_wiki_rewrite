@@ -683,8 +683,12 @@ export function createWorkspaceActions(deps) {
       ? `，已跳过 ${response.skippedHidden.length} 个隐藏文件`
       : ""
     setStatus(mode === "folder"
-      ? `已导入 ${response.uploaded.length} 个文件${roots}${hiddenSuffix}`
-      : `已上传 ${response.uploaded.length} 个文件${hiddenSuffix}`)
+      ? `已导入 ${response.uploaded.length} 个文件${roots}${hiddenSuffix}，正在自动启动提取...`
+      : `已上传 ${response.uploaded.length} 个文件${hiddenSuffix}，正在自动启动提取...`)
+    await runIngest({
+      batchId: response.batch?.id || "",
+      sourcePaths: Array.isArray(response.batch?.sourcePaths) ? response.batch.sourcePaths : [],
+    })
   }
 
   async function runIngest(options = {}) {
