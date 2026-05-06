@@ -199,13 +199,16 @@ export function renderGraphView({ els, state, onOpenFile, onPreviewNode }) {
     group.addEventListener("pointerdown", (event) => {
       event.preventDefault()
       event.stopPropagation()
+      const startPoint = clientPointToSvg(event, svg, width, height)
+      const offsetX = startPoint.x - node.x
+      const offsetY = startPoint.y - node.y
       const move = (moveEvent) => {
         const point = clientPointToSvg(moveEvent, svg, width, height)
         state.graphNodePositions = {
           ...(state.graphNodePositions || {}),
           [node.id]: {
-            x: Math.max(24, Math.min(width - 24, point.x)),
-            y: Math.max(24, Math.min(height - 24, point.y)),
+            x: Math.max(24, Math.min(width - 24, point.x - offsetX)),
+            y: Math.max(24, Math.min(height - 24, point.y - offsetY)),
           },
         }
         renderGraphView({ els, state, onOpenFile, onPreviewNode })
