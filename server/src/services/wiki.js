@@ -9,6 +9,33 @@ import {
   titleFromFileName,
 } from "../lib/text.js"
 
+function readFrontmatterList(content, key) {
+  const match = String(content || "").match(/^---\n([\s\S]*?)\n---/)
+  if (!match) return []
+  const frontmatter = match[1]
+  const inline = frontmatter.match(new RegExp(`^${key}:\\s*\\[(.*?)\\]\\s*$`, "m"))
+  if (inline) {
+    return inline[1]
+      .split(",")
+      .map((item) => item.replace(/^["'\s]+|["'\s]+$/g, ""))
+      .filter(Boolean)
+  }
+  const lines = frontmatter.split("\n")
+  const values = []
+  let inField = false
+  for (const line of lines) {
+    if (new RegExp(`^${key}:\\s*$`).test(line.trim())) {
+      inField = true
+      continue
+    }
+    if (!inField) continue
+    if (!/^\s*-\s+/.test(line)) break
+    const item = line.replace(/^\s*-\s+/, "").replace(/^["']|["']$/g, "").trim()
+    if (item) values.push(item)
+  }
+  return values
+}
+
 export async function rebuildWikiIndex(projectId, deps) {
   const { ensureInsideProject, collectFiles, writeProjectFile } = deps
   const wikiRoot = ensureInsideProject(projectId, "wiki").fullPath
@@ -86,6 +113,7 @@ export async function buildKnowledgeView(projectId, deps) {
       created,
       updated,
       sourcePath: readFrontmatterValue(contents, "source_path") || "",
+      sourceFiles: readFrontmatterList(contents, "sources"),
       summary: snippetAround(stripFrontmatter(contents), ""),
     }
 

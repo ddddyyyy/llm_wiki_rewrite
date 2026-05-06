@@ -44,14 +44,22 @@ function collectFilePaths(nodes, into = new Set()) {
   return into
 }
 
-function summarizeBatchStatus(sourcePaths, treeFilePaths, sourcePageSourcePaths) {
+function fileNameFromPath(value) {
+  return String(value || "").split("/").pop() || ""
+}
+
+function isSourceCompleted(sourcePath, sourcePageSourcePaths, sourcePageSourceNames) {
+  return sourcePageSourcePaths.has(sourcePath) || sourcePageSourceNames.has(fileNameFromPath(sourcePath))
+}
+
+function summarizeBatchStatus(sourcePaths, treeFilePaths, sourcePageSourcePaths, sourcePageSourceNames) {
   const allPaths = (Array.isArray(sourcePaths) ? sourcePaths : []).filter(Boolean)
   let pending = 0
   let completed = 0
   let canceled = 0
 
   for (const sourcePath of allPaths) {
-    if (sourcePageSourcePaths.has(sourcePath)) {
+    if (isSourceCompleted(sourcePath, sourcePageSourcePaths, sourcePageSourceNames)) {
       completed += 1
     } else if (treeFilePaths.has(sourcePath)) {
       pending += 1
@@ -129,7 +137,7 @@ function normalizeSourceTaskPath(value) {
   return path.startsWith("raw/sources/") ? path : `raw/sources/${path}`
 }
 
-function summarizeSourceItemState(sourcePath, batchStatus, treeFilePaths, sourcePageSourcePaths, task) {
+function summarizeSourceItemState(sourcePath, batchStatus, treeFilePaths, sourcePageSourcePaths, sourcePageSourceNames, task) {
   if (!treeFilePaths.has(sourcePath)) {
     return { label: "已取消", tone: "canceled", canReingest: false }
   }
@@ -147,7 +155,7 @@ function summarizeSourceItemState(sourcePath, batchStatus, treeFilePaths, source
   if (task?.status === "error" && (normalizeSourceTaskPath(task.file) === sourcePath || normalizeSourceTaskPath(task.sourcePath) === sourcePath)) {
     return { label: "提取失败", tone: "error", canReingest: false }
   }
-  if (sourcePageSourcePaths.has(sourcePath)) {
+  if (isSourceCompleted(sourcePath, sourcePageSourcePaths, sourcePageSourceNames)) {
     return { label: "已完成", tone: "done", canReingest: true }
   }
   if (batchStatus.label === "已取消") {
@@ -177,11 +185,19 @@ export function renderSourcesWorkspace({
   const batches = state.importHistory || []
   const batchIndex = Math.min(Math.max(state.sourcesBatchIndex || 0, 0), Math.max(batches.length - 1, 0))
   const treeFilePaths = collectFilePaths(state.treeNodes || [])
-  const sourcePageSourcePaths = new Set(
-    (state.knowledge?.sections?.sources || [])
-      .map((item) => String(item.sourcePath || "").trim())
-      .filter(Boolean),
-  )
+  const sourcePageSourcePaths = new Set()
+  const sourcePageSourceNames = new Set()
+  for (const item of state.knowledge?.sections?.sources || []) {
+    const sourcePath = String(item.sourcePath || "").trim()
+    if (sourcePath) {
+      sourcePageSourcePaths.add(sourcePath)
+      sourcePageSourceNames.add(fileNameFromPath(sourcePath))
+    }
+    for (const sourceFile of Array.isArray(item.sourceFiles) ? item.sourceFiles : []) {
+      const sourceName = fileNameFromPath(sourceFile)
+      if (sourceName) sourcePageSourceNames.add(sourceName)
+    }
+  }
   const activeIngestTask = findActiveProjectIngestTask(tasks)
 
   els.sourcesImportHistory.innerHTML = ""
@@ -208,11 +224,12 @@ export function renderSourcesWorkspace({
       ? batch.roots.join("、")
       : "未命名批次"
     const items = Array.isArray(batch.items) ? batch.items : []
-    const pendingSourcePaths = (Array.isArray(batch.sourcePaths) ? batch.sourcePaths : []).filter((sourcePath) => {
+    const batchSourcePaths = Array.isArray(batch.sourcePaths) ? batch.sourcePaths : []
+    const pendingSourcePaths = batchSourcePaths.filter((sourcePath) => {
       if (!treeFilePaths.has(sourcePath)) return false
-      return !sourcePageSourcePaths.has(sourcePath)
+      return !isSourceCompleted(sourcePath, sourcePageSourcePaths, sourcePageSourceNames)
     })
-    const batchStatus = summarizeBatchStatus(batch.sourcePaths, treeFilePaths, sourcePageSourcePaths)
+    const batchStatus = summarizeBatchStatus(batchSourcePaths, treeFilePaths, sourcePageSourcePaths, sourcePageSourceNames)
     const batchTask = findLatestBatchTask(tasks, batch.id)
     const activeBatchTask = batchTask && ["queued", "running"].includes(batchTask.status) ? batchTask : null
     const shouldReflectGenericIngest = !activeBatchTask && activeIngestTask?.type === "ingest" && pendingSourcePaths.length > 0
@@ -260,7 +277,10 @@ export function renderSourcesWorkspace({
           const targetPath = item.startsWith("raw/") ? item : `raw/sources/${item}`
           const existsInTree = treeFilePaths.has(targetPath)
           const task = activeBatchTask || findLatestRelevantTask(tasks, targetPath)
-          const itemState = summarizeSourceItemState(targetPath, batchStatus, treeFilePaths, sourcePageSourcePaths, task)
+          const itemCompleted = isSourceCompleted(targetPath, sourcePageSourcePaths, sourcePageSourceNames)
+          const itemState = itemCompleted
+            ? { label: "已完成", tone: "done", canReingest: true }
+            : summarizeSourceItemState(targetPath, batchStatus, treeFilePaths, sourcePageSourcePaths, sourcePageSourceNames, task)
           const activeState = shouldReflectGenericIngest && itemState.label === "待处理"
             ? {
                 label: activeIngestTask?.status === "running" && normalizeSourceTaskPath(activeIngestTask.file) === targetPath ? "提取中" : "排队中",
@@ -272,16 +292,12 @@ export function renderSourcesWorkspace({
                 ...itemState,
                 stage: formatTaskStage(task?.stage),
               }
+          const detailLabel = activeState.label === "提取中" && activeState.stage ? activeState.stage : activeState.label
           return `
             <div class="import-batch-item-row">
-              <div class="import-batch-item-main">
-                <button type="button" class="import-batch-item">${escapeHtml(item)}</button>
-                ${activeState.stage && ["提取中", "排队中", "提取失败"].includes(activeState.label)
-                  ? `<span class="import-batch-item-stage">${escapeHtml(activeState.stage)}</span>`
-                  : ""}
-              </div>
+              <button type="button" class="import-batch-item">${escapeHtml(item)}</button>
               <div class="import-batch-item-side">
-                <span class="import-batch-file-status ${escapeHtml(statusTone(activeState.tone))}">${escapeHtml(activeState.label)}</span>
+                <span class="import-batch-file-status ${escapeHtml(statusTone(activeState.tone))}">${escapeHtml(detailLabel)}</span>
                 <button
                   type="button"
                   class="mini-button import-batch-reingest"
