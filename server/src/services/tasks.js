@@ -60,11 +60,16 @@ export function createTaskService({ tasksPath, fs }) {
       .slice(0, 20)
   }
 
+  function findProjectTask(projectId, predicate) {
+    return [...taskStore.values()].find((task) => task.projectId === projectId && predicate(task))
+  }
+
   return {
     loadTaskStore,
     persistTaskStore,
     createTask,
     updateTask,
     listProjectTasks,
+    findProjectTask,
   }
 }

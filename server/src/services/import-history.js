@@ -35,6 +35,17 @@ function normalizeBatch(batch) {
   }
 }
 
+function batchSignature(batch) {
+  const sourcePaths = Array.isArray(batch?.sourcePaths) ? batch.sourcePaths.filter(Boolean) : []
+  const items = Array.isArray(batch?.items) ? batch.items.filter(Boolean) : []
+  const kind = String(batch?.kind || "files")
+  return JSON.stringify({
+    kind,
+    sourcePaths: [...new Set(sourcePaths)].sort(),
+    items: [...new Set(items)].sort(),
+  })
+}
+
 export function createImportHistoryService({ projectService }) {
   async function loadImportHistory(projectId) {
     try {
@@ -57,7 +68,9 @@ export function createImportHistoryService({ projectService }) {
   async function recordImportBatch(projectId, files, uploaded) {
     const batch = summarizeUploadBatch(files, uploaded)
     const current = await loadImportHistory(projectId)
-    const next = [batch, ...current].slice(0, 12)
+    const signature = batchSignature(batch)
+    const deduped = current.filter((entry) => batchSignature(entry) !== signature)
+    const next = [batch, ...deduped].slice(0, 12)
     await saveImportHistory(projectId, next)
     return normalizeBatch(batch)
   }

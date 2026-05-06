@@ -125,11 +125,23 @@ export function createAppServices(runtime) {
       ? options.sourcePaths.map((item) => String(item || "").trim()).filter(Boolean)
       : []
     const isBatchScoped = requestedSourcePaths.length > 0
+    const normalizedRequestedPaths = [...new Set(requestedSourcePaths)].sort()
+    const existingTask = taskService.findProjectTask(projectId, (task) => {
+      if (!["queued", "running"].includes(task.status)) return false
+      const taskPaths = [...new Set(Array.isArray(task.sourcePaths) ? task.sourcePaths.filter(Boolean) : [])].sort()
+      if (isBatchScoped) {
+        return task.type === "ingest-batch" && JSON.stringify(taskPaths) === JSON.stringify(normalizedRequestedPaths)
+      }
+      return task.type === "ingest"
+    })
+    if (existingTask) {
+      return existingTask
+    }
     const task = taskService.createTask(projectId, isBatchScoped ? "ingest-batch" : "ingest")
     if (options.batchId) {
-      taskService.updateTask(task.id, { batchId: options.batchId, sourcePaths: requestedSourcePaths })
+      taskService.updateTask(task.id, { batchId: options.batchId, sourcePaths: normalizedRequestedPaths })
     } else if (isBatchScoped) {
-      taskService.updateTask(task.id, { sourcePaths: requestedSourcePaths })
+      taskService.updateTask(task.id, { sourcePaths: normalizedRequestedPaths })
     }
     await taskService.persistTaskStore()
 
@@ -144,7 +156,7 @@ export function createAppServices(runtime) {
             error: null,
           })
           await taskService.persistTaskStore()
-        }, { sourcePaths: requestedSourcePaths })
+        }, { sourcePaths: normalizedRequestedPaths })
         taskService.updateTask(task.id, {
           status: "done",
           stage: "done",
