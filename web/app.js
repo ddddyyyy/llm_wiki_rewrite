@@ -34,6 +34,7 @@ const state = {
   graphPreviewContents: "",
   graphPreviewMode: "empty",
   graphPreviewDownloadUrl: "",
+  graphNodePositions: {},
   lastQuestion: "",
   conversations: [],
   selectedConversationId: null,

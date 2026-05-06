@@ -6,6 +6,14 @@ const TYPE_COLORS = {
   other: "#b7bdc9",
 }
 
+const TYPE_LABELS = {
+  other: "Other",
+  overview: "Overview",
+  source: "Source",
+  concept: "Concept",
+  entity: "Entity",
+}
+
 const EDGE_STYLES = {
   active: "rgba(88, 104, 127, 0.54)",
   idle: "rgba(125, 140, 160, 0.22)",
@@ -37,6 +45,14 @@ function layoutNodes(nodes, width, height) {
       color: TYPE_COLORS[node.type] || TYPE_COLORS.page,
     }
   })
+}
+
+function clientPointToSvg(event, svg, width, height) {
+  const rect = svg.getBoundingClientRect()
+  return {
+    x: ((event.clientX - rect.left) / rect.width) * width,
+    y: ((event.clientY - rect.top) / rect.height) * height,
+  }
 }
 
 function formatEdgeWeight(weight) {
@@ -77,9 +93,9 @@ export function renderGraphView({ els, state, onOpenFile, onPreviewNode }) {
   ]
   els.graphSummary.textContent = summaryParts.join(" · ")
 
-  const typeOptions = ["all", ...Object.keys(stats.typeCounts || {})]
+  const typeOptions = ["all", ...Object.keys(TYPE_LABELS)]
   els.graphTypeFilter.innerHTML = typeOptions
-    .map((type) => `<option value="${escapeHtml(type)}"${state.graphTypeFilter === type ? " selected" : ""}>${type === "all" ? "全部类型" : escapeHtml(type[0].toUpperCase() + type.slice(1))}</option>`)
+    .map((type) => `<option value="${escapeHtml(type)}"${state.graphTypeFilter === type ? " selected" : ""}>${type === "all" ? "全部类型" : escapeHtml(TYPE_LABELS[type] || type)}</option>`)
     .join("")
 
   const filteredNodes = nodes.filter((node) => state.graphTypeFilter === "all" || node.type === state.graphTypeFilter)
@@ -93,7 +109,10 @@ export function renderGraphView({ els, state, onOpenFile, onPreviewNode }) {
 
   const width = 920
   const height = 620
-  const laidOut = layoutNodes(filteredNodes, width, height)
+  const laidOut = layoutNodes(filteredNodes, width, height).map((node) => ({
+    ...node,
+    ...(state.graphNodePositions?.[node.id] || {}),
+  }))
   const byId = new Map(laidOut.map((node) => [node.id, node]))
   const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg")
   svg.setAttribute("viewBox", `0 0 ${width} ${height}`)
@@ -123,17 +142,16 @@ export function renderGraphView({ els, state, onOpenFile, onPreviewNode }) {
     line.setAttribute("opacity", state.graphNeighborOnly && selectedNodeId && !isActive ? EDGE_STYLES.dimmedOpacity : "1")
     svg.appendChild(line)
 
-    const label = document.createElementNS("http://www.w3.org/2000/svg", "text")
-    label.setAttribute("x", String((source.x + target.x) / 2))
-    label.setAttribute("y", String((source.y + target.y) / 2 - 4))
-    label.setAttribute("text-anchor", "middle")
-    label.setAttribute("fill", "rgba(68, 82, 104, 0.82)")
-    label.setAttribute("font-size", "10")
-    label.textContent = formatEdgeWeight(edge.weight)
-    if (state.graphNeighborOnly && selectedNodeId && !isActive) {
-      label.setAttribute("opacity", EDGE_STYLES.dimmedOpacity)
+    if (selectedNodeId && isActive) {
+      const label = document.createElementNS("http://www.w3.org/2000/svg", "text")
+      label.setAttribute("x", String((source.x + target.x) / 2))
+      label.setAttribute("y", String((source.y + target.y) / 2 - 4))
+      label.setAttribute("text-anchor", "middle")
+      label.setAttribute("fill", "rgba(68, 82, 104, 0.82)")
+      label.setAttribute("font-size", "10")
+      label.textContent = formatEdgeWeight(edge.weight)
+      svg.appendChild(label)
     }
-    svg.appendChild(label)
   }
 
   for (const node of laidOut) {
@@ -177,13 +195,34 @@ export function renderGraphView({ els, state, onOpenFile, onPreviewNode }) {
     const title = document.createElementNS("http://www.w3.org/2000/svg", "title")
     title.textContent = `${node.title}\n${node.path}\n类型：${node.type}\n连接数：${node.degree || 0}`
     group.appendChild(title)
+
+    group.addEventListener("pointerdown", (event) => {
+      event.preventDefault()
+      event.stopPropagation()
+      const move = (moveEvent) => {
+        const point = clientPointToSvg(moveEvent, svg, width, height)
+        state.graphNodePositions = {
+          ...(state.graphNodePositions || {}),
+          [node.id]: {
+            x: Math.max(24, Math.min(width - 24, point.x)),
+            y: Math.max(24, Math.min(height - 24, point.y)),
+          },
+        }
+        renderGraphView({ els, state, onOpenFile, onPreviewNode })
+      }
+      const up = () => {
+        window.removeEventListener("pointermove", move)
+        window.removeEventListener("pointerup", up)
+      }
+      window.addEventListener("pointermove", move)
+      window.addEventListener("pointerup", up)
+    })
     svg.appendChild(group)
   }
 
   els.graphStage.appendChild(svg)
 
   els.graphLegend.innerHTML = Object.entries(TYPE_COLORS)
-    .filter(([type]) => Object.keys(stats.typeCounts || {}).includes(type))
-    .map(([type, color]) => `<span class="graph-legend-item"><i style="background:${color}"></i>${escapeHtml(type[0].toUpperCase() + type.slice(1))}</span>`)
+    .map(([type, color]) => `<span class="graph-legend-item"><i style="background:${color}"></i>${escapeHtml(TYPE_LABELS[type] || type)}</span>`)
     .join("")
 }

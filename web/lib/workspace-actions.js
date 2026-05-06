@@ -113,6 +113,7 @@ export function createWorkspaceActions(deps) {
     state.graphPreviewContents = ""
     state.graphPreviewMode = "empty"
     state.graphPreviewDownloadUrl = ""
+    state.graphNodePositions = {}
     state.lint = null
     state.lens = null
     state.importHistory = []
