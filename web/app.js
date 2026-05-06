@@ -30,6 +30,10 @@ const state = {
   lint: null,
   lens: null,
   importHistory: [],
+  graphPreviewPath: null,
+  graphPreviewContents: "",
+  graphPreviewMode: "empty",
+  graphPreviewDownloadUrl: "",
   lastQuestion: "",
   conversations: [],
   selectedConversationId: null,
@@ -146,7 +150,11 @@ const els = {
   graphSummary: document.querySelector("#graph-summary"),
   graphStage: document.querySelector("#graph-stage"),
   graphLegend: document.querySelector("#graph-legend"),
-  graphInsights: document.querySelector("#graph-insights"),
+  graphPreviewPath: document.querySelector("#graph-preview-path"),
+  graphPreviewPanel: document.querySelector("#graph-preview-panel"),
+  graphPreviewDownload: document.querySelector("#graph-preview-download"),
+  graphPreviewDownloadCopy: document.querySelector("#graph-preview-download-copy"),
+  graphPreviewDownloadLink: document.querySelector("#graph-preview-download-link"),
   graphTypeFilter: document.querySelector("#graph-type-filter"),
   graphNeighborOnly: document.querySelector("#graph-neighbor-only"),
   runLintButton: document.querySelector("#run-lint-button"),
@@ -198,6 +206,32 @@ function updateEditor() {
     els.downloadLink.setAttribute("download", state.selectedPath?.split("/").pop() || "download")
     els.downloadCopy.textContent = `当前文件 ${state.selectedPath || ""} 不支持网页预览，请直接下载查看。`
   }
+}
+
+function updateGraphPreview() {
+  els.graphPreviewPath.textContent = state.graphPreviewPath || "点击图谱节点查看内容"
+  const isTextMode = state.graphPreviewMode === "text"
+  els.graphPreviewPanel.hidden = !isTextMode
+  els.graphPreviewDownload.hidden = isTextMode
+
+  if (isTextMode) {
+    if (isMarkdownPath(state.graphPreviewPath)) {
+      els.graphPreviewPanel.innerHTML = state.graphPreviewContents
+        ? renderMarkdownToHtml(state.graphPreviewContents)
+        : "<p>这里会显示节点对应页面的内容。</p>"
+      els.graphPreviewPanel.classList.add("markdown-rendered")
+    } else {
+      els.graphPreviewPanel.textContent = state.graphPreviewContents || "这里会显示节点对应页面的内容。"
+      els.graphPreviewPanel.classList.remove("markdown-rendered")
+    }
+    return
+  }
+
+  els.graphPreviewDownloadLink.href = state.graphPreviewDownloadUrl || "#"
+  els.graphPreviewDownloadLink.setAttribute("download", state.graphPreviewPath?.split("/").pop() || "download")
+  els.graphPreviewDownloadCopy.textContent = state.graphPreviewPath
+    ? `当前节点 ${state.graphPreviewPath} 不支持网页预览，请直接下载查看。`
+    : "当前节点内容不可直接预览，请下载查看。"
 }
 
 function updateUploadState() {
@@ -325,7 +359,9 @@ function renderGraphPanel() {
     els,
     state,
     onOpenFile: workspaceActions.openFile,
+    onPreviewNode: workspaceActions.previewGraphNode,
   })
+  updateGraphPreview()
 }
 
 function renderLintPanel() {

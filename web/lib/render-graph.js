@@ -43,10 +43,9 @@ function layoutNodes(nodes, width, height) {
   })
 }
 
-export function renderGraphView({ els, state, onOpenFile }) {
+export function renderGraphView({ els, state, onOpenFile, onPreviewNode }) {
   els.graphStage.innerHTML = ""
   els.graphSummary.innerHTML = ""
-  els.graphInsights.innerHTML = ""
 
   if (state.activeView !== "graph") {
     return
@@ -136,8 +135,10 @@ export function renderGraphView({ els, state, onOpenFile }) {
         void onOpenFile(node.path)
         return
       }
-      state.graphSelectedNodeId = state.graphSelectedNodeId === node.id ? null : node.id
-      renderGraphView({ els, state, onOpenFile })
+      const nextSelected = state.graphSelectedNodeId === node.id ? null : node.id
+      state.graphSelectedNodeId = nextSelected
+      void onPreviewNode?.(nextSelected ? node.path : null)
+      renderGraphView({ els, state, onOpenFile, onPreviewNode })
     })
 
     const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle")
@@ -170,77 +171,4 @@ export function renderGraphView({ els, state, onOpenFile }) {
     .filter(([type]) => Object.keys(stats.typeCounts || {}).includes(type))
     .map(([type, color]) => `<span class="graph-legend-item"><i style="background:${color}"></i>${escapeHtml(type)}</span>`)
     .join("")
-
-  const insightItems = [
-    ...(insights.bridgeNodes || []).slice(0, 3).map((node) => ({ kind: "bridge", node })),
-    ...(insights.sparseClusters || []).slice(0, 2).map((cluster) => ({ kind: "cluster", cluster })),
-    ...(insights.surprisingConnections || []).slice(0, 2).map((edge) => ({ kind: "edge", edge })),
-    ...(insights.isolatedNodes || []).slice(0, 2).map((node) => ({ kind: "isolated", node })),
-  ]
-
-  for (const item of insightItems) {
-    const article = document.createElement("article")
-    article.className = "graph-insight-card"
-
-    if (item.kind === "bridge") {
-      const node = item.node
-      article.innerHTML = `
-        <strong>关键桥梁页</strong>
-        <p>${escapeHtml(node.title)} 连接较多页面，适合做总览或中枢页。</p>
-        <div class="item-meta">${escapeHtml(node.path)}</div>
-        <div class="graph-insight-actions">
-          <button type="button" class="mini-button graph-open-page">打开页面</button>
-        </div>
-      `
-      article.querySelector(".graph-open-page")?.addEventListener("click", () => void onOpenFile(node.path))
-    }
-
-    if (item.kind === "cluster") {
-      const cluster = item.cluster
-      const sample = cluster.members?.slice(0, 3).map((member) => member.title).join("、") || "该知识簇"
-      article.innerHTML = `
-        <strong>连接偏弱的知识簇</strong>
-        <p>${escapeHtml(sample)} 这组页面之间的内部连接密度偏低，建议补链或增加综合页。</p>
-        <div class="item-meta">${cluster.nodeCount} 个页面 · cohesion ${cluster.cohesion.toFixed(2)}</div>
-        <div class="graph-insight-chip-row">
-          ${(cluster.members || []).slice(0, 4).map((member) => `
-            <button type="button" class="mini-button graph-open-member" data-path="${escapeHtml(member.path)}">${escapeHtml(member.title)}</button>
-          `).join("")}
-        </div>
-      `
-      for (const button of article.querySelectorAll(".graph-open-member")) {
-        button.addEventListener("click", () => void onOpenFile(button.dataset.path))
-      }
-    }
-
-    if (item.kind === "edge") {
-      const edge = item.edge
-      article.innerHTML = `
-        <strong>值得关注的连接</strong>
-        <p>${escapeHtml(edge.source.title)} ↔ ${escapeHtml(edge.target.title)}</p>
-        <div class="item-meta">${escapeHtml((edge.reasons || []).join(" · "))}</div>
-        <div class="graph-insight-actions">
-          <button type="button" class="mini-button graph-open-source">打开左侧页面</button>
-          <button type="button" class="mini-button graph-open-target">打开右侧页面</button>
-        </div>
-      `
-      article.querySelector(".graph-open-source")?.addEventListener("click", () => void onOpenFile(edge.source.path))
-      article.querySelector(".graph-open-target")?.addEventListener("click", () => void onOpenFile(edge.target.path))
-    }
-
-    if (item.kind === "isolated") {
-      const node = item.node
-      article.innerHTML = `
-        <strong>孤立知识页</strong>
-        <p>${escapeHtml(node.title)} 当前连接很少，适合补充相关页引用或写入综合页。</p>
-        <div class="item-meta">${escapeHtml(node.path)}</div>
-        <div class="graph-insight-actions">
-          <button type="button" class="mini-button graph-open-page">打开页面</button>
-        </div>
-      `
-      article.querySelector(".graph-open-page")?.addEventListener("click", () => void onOpenFile(node.path))
-    }
-
-    els.graphInsights.appendChild(article)
-  }
 }

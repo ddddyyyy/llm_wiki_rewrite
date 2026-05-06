@@ -243,24 +243,40 @@
             </section>
 
             <section id="detail-graph" class="detail-section" hidden>
-              <div class="graph-toolbar">
-                <div>
-                  <div class="section-title">知识图谱</div>
-                  <div id="graph-summary" class="current-path">图谱尚未加载</div>
+              <div class="graph-workspace">
+                <div class="graph-main">
+                  <div class="graph-toolbar">
+                    <div>
+                      <div class="section-title">知识图谱</div>
+                      <div id="graph-summary" class="current-path">图谱尚未加载</div>
+                    </div>
+                    <div class="graph-controls">
+                      <select id="graph-type-filter">
+                        <option value="all">全部类型</option>
+                      </select>
+                      <label class="graph-toggle">
+                        <input id="graph-neighbor-only" type="checkbox" />
+                        <span>仅高亮关联节点</span>
+                      </label>
+                    </div>
+                  </div>
+                  <div id="graph-stage" class="graph-stage"></div>
+                  <div id="graph-legend" class="graph-legend"></div>
                 </div>
-                <div class="graph-controls">
-                  <select id="graph-type-filter">
-                    <option value="all">全部类型</option>
-                  </select>
-                  <label class="graph-toggle">
-                    <input id="graph-neighbor-only" type="checkbox" />
-                    <span>仅高亮关联节点</span>
-                  </label>
-                </div>
+                <aside class="graph-preview">
+                  <div class="graph-preview-toolbar">
+                    <div>
+                      <div class="section-title section-title--small">节点预览</div>
+                      <div id="graph-preview-path" class="current-path">点击图谱节点查看内容</div>
+                    </div>
+                  </div>
+                  <div id="graph-preview-panel" class="preview-panel graph-preview-panel">这里会显示节点对应页面的内容。</div>
+                  <div id="graph-preview-download" class="download-panel" hidden>
+                    <div id="graph-preview-download-copy" class="panel-copy">当前节点内容不可直接预览，请下载查看。</div>
+                    <a id="graph-preview-download-link" class="secondary-button" href="#" download>下载文件</a>
+                  </div>
+                </aside>
               </div>
-              <div id="graph-stage" class="graph-stage"></div>
-              <div id="graph-legend" class="graph-legend"></div>
-              <section id="graph-insights" class="graph-insights"></section>
             </section>
 
             <section id="detail-lint" class="detail-section" hidden>
