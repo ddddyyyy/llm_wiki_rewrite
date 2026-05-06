@@ -1,6 +1,7 @@
 import path from "node:path"
 import { fileURLToPath } from "node:url"
 import { snippetAround } from "./lib/knowledge.js"
+import { createProjectLockService } from "./lib/project-lock.js"
 import { createProjectFs } from "./lib/project-fs.js"
 import { createDocumentExtractor } from "./services/document-extractor.js"
 import { createIngestService } from "./services/ingest.js"
@@ -49,6 +50,7 @@ export function createRuntimeConfig() {
 
 export function createAppServices(runtime) {
   const projectFs = createProjectFs(runtime.projectsRoot)
+  const projectLockService = createProjectLockService()
   const documentExtractor = createDocumentExtractor()
   const settingsService = createSettingsService({ settingsPath: runtime.settingsPath, fs: projectFs })
   const taskService = createTaskService({ tasksPath: runtime.tasksPath, fs: projectFs })
@@ -147,16 +149,27 @@ export function createAppServices(runtime) {
 
     void (async () => {
       try {
-        const result = await ingestService.ingestProjectWithProgress(projectId, async (progress) => {
+        if (projectLockService.hasActiveLock(projectId)) {
           taskService.updateTask(task.id, {
-            status: "running",
-            stage: progress.stage,
-            message: progress.message,
-            file: progress.file || null,
+            status: "queued",
+            stage: "queued",
+            message: "当前项目已有提取任务在运行，等待上一个任务完成...",
             error: null,
           })
           await taskService.persistTaskStore()
-        }, { sourcePaths: normalizedRequestedPaths })
+        }
+        const result = await projectLockService.withProjectLock(projectId, async () =>
+          ingestService.ingestProjectWithProgress(projectId, async (progress) => {
+            taskService.updateTask(task.id, {
+              status: "running",
+              stage: progress.stage,
+              message: progress.message,
+              file: progress.file || null,
+              error: null,
+            })
+            await taskService.persistTaskStore()
+          }, { sourcePaths: normalizedRequestedPaths }),
+        )
         taskService.updateTask(task.id, {
           status: "done",
           stage: "done",
@@ -192,16 +205,27 @@ export function createAppServices(runtime) {
 
     void (async () => {
       try {
-        const result = await ingestService.reingestSourceWithProgress(projectId, sourcePath, async (progress) => {
+        if (projectLockService.hasActiveLock(projectId)) {
           taskService.updateTask(task.id, {
-            status: "running",
-            stage: progress.stage,
-            message: progress.message,
-            file: progress.file || sourcePath,
+            status: "queued",
+            stage: "queued",
+            message: "当前项目已有提取任务在运行，等待上一个任务完成...",
             error: null,
           })
           await taskService.persistTaskStore()
-        })
+        }
+        const result = await projectLockService.withProjectLock(projectId, async () =>
+          ingestService.reingestSourceWithProgress(projectId, sourcePath, async (progress) => {
+            taskService.updateTask(task.id, {
+              status: "running",
+              stage: progress.stage,
+              message: progress.message,
+              file: progress.file || sourcePath,
+              error: null,
+            })
+            await taskService.persistTaskStore()
+          }),
+        )
         taskService.updateTask(task.id, {
           status: "done",
           stage: "done",
@@ -225,6 +249,7 @@ export function createAppServices(runtime) {
 
   return {
     projectFs,
+    projectLockService,
     documentExtractor,
     settingsService,
     taskService,
