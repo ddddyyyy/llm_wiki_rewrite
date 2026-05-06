@@ -102,12 +102,18 @@ function findActiveProjectIngestTask(tasks) {
   }) || null
 }
 
+function normalizeSourceTaskPath(value) {
+  const path = String(value || "").trim().replace(/^\/+/, "")
+  if (!path) return ""
+  return path.startsWith("raw/sources/") ? path : `raw/sources/${path}`
+}
+
 function summarizeSourceItemState(sourcePath, batchStatus, treeFilePaths, sourcePageSourcePaths, task) {
   if (!treeFilePaths.has(sourcePath)) {
     return { label: "已取消", tone: "canceled", canReingest: false }
   }
   if (task?.status === "running") {
-    if (task.file && String(task.file) === sourcePath) {
+    if (normalizeSourceTaskPath(task.file) === sourcePath) {
       return { label: "提取中", tone: "running", canReingest: false }
     }
     if (Array.isArray(task.sourcePaths) && task.sourcePaths.includes(sourcePath)) {
@@ -231,8 +237,8 @@ export function renderSourcesWorkspace({
           const itemState = summarizeSourceItemState(targetPath, batchStatus, treeFilePaths, sourcePageSourcePaths, task)
           const activeState = shouldReflectGenericIngest && itemState.label === "待处理"
             ? {
-                label: activeIngestTask?.status === "running" && String(activeIngestTask.file || "") === targetPath ? "提取中" : "排队中",
-                tone: activeIngestTask?.status === "running" && String(activeIngestTask.file || "") === targetPath ? "running" : "queued",
+                label: activeIngestTask?.status === "running" && normalizeSourceTaskPath(activeIngestTask.file) === targetPath ? "提取中" : "排队中",
+                tone: activeIngestTask?.status === "running" && normalizeSourceTaskPath(activeIngestTask.file) === targetPath ? "running" : "queued",
                 canReingest: false,
               }
             : itemState
