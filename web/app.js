@@ -1,8 +1,5 @@
 import {
   KNOWLEDGE_SECTIONS,
-  formatTaskStage,
-  formatTaskStatus,
-  formatTaskType,
 } from "./lib/formatters.js"
 import { createApiClient } from "./lib/api.js"
 import { renderChatMessages, renderConversations } from "./lib/render-chat.js"
@@ -52,7 +49,6 @@ const state = {
   graphNeighborOnly: true,
   lensTab: "queries",
   sourcesBatchIndex: 0,
-  taskIndex: 0,
   tasks: [],
   taskPollTimer: null,
   expandedTreePaths: new Set(),
@@ -71,7 +67,6 @@ const els = {
   activeProjectMeta: document.querySelector("#active-project-meta"),
   activeViewTitle: document.querySelector("#active-view-title"),
   headerSourceActions: document.querySelector("#header-source-actions"),
-  sourcesTaskPanel: document.querySelector("#sources-task-panel"),
   workspaceBody: document.querySelector("#workspace-body"),
   contextPane: document.querySelector("#context-pane"),
   sidebarKnowledge: document.querySelector("#sidebar-knowledge"),
@@ -105,11 +100,6 @@ const els = {
   lensQueries: document.querySelector("#lens-queries"),
   lensReview: document.querySelector("#lens-review"),
   lensTabButtons: Array.from(document.querySelectorAll(".lens-tab")),
-  taskList: document.querySelector("#task-list"),
-  taskBatchNav: document.querySelector("#task-batch-nav"),
-  taskPrev: document.querySelector("#task-prev"),
-  taskIndicator: document.querySelector("#task-indicator"),
-  taskNext: document.querySelector("#task-next"),
   sourcesSummaryTotal: document.querySelector("#sources-summary-total"),
   sourcesSummaryRunning: document.querySelector("#sources-summary-running"),
   sourcesSummaryDone: document.querySelector("#sources-summary-done"),
@@ -441,9 +431,6 @@ workspaceActions = createWorkspaceActions({
   renderChatPanel,
   renderShell: renderChrome,
   renderTree,
-  formatTaskType,
-  formatTaskStatus,
-  formatTaskStage,
 })
 
 workspaceActions.bind(workspaceActions)

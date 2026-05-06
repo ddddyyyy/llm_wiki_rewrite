@@ -67,6 +67,60 @@ function summarizeBatchStatus(sourcePaths, treeFilePaths, sourcePageSourcePaths)
   }
 }
 
+function statusTone(status) {
+  switch (status) {
+    case "running":
+      return "is-running"
+    case "queued":
+      return "is-queued"
+    case "done":
+      return "is-done"
+    case "error":
+      return "is-error"
+    case "canceled":
+      return "is-canceled"
+    default:
+      return ""
+  }
+}
+
+function findLatestRelevantTask(tasks, sourcePath) {
+  const allTasks = Array.isArray(tasks) ? tasks : []
+  return allTasks.find((task) => {
+    if (!task) return false
+    if (String(task.sourcePath || "") === sourcePath) return true
+    if (Array.isArray(task.sourcePaths) && task.sourcePaths.includes(sourcePath)) return true
+    return false
+  }) || null
+}
+
+function summarizeSourceItemState(sourcePath, batchStatus, treeFilePaths, sourcePageSourcePaths, task) {
+  if (!treeFilePaths.has(sourcePath)) {
+    return { label: "已取消", tone: "canceled", canReingest: false }
+  }
+  if (task?.status === "running") {
+    if (task.file && String(task.file) === sourcePath) {
+      return { label: "提取中", tone: "running", canReingest: false }
+    }
+    if (Array.isArray(task.sourcePaths) && task.sourcePaths.includes(sourcePath)) {
+      return { label: "等待本批", tone: "queued", canReingest: false }
+    }
+  }
+  if (task?.status === "queued") {
+    return { label: "排队中", tone: "queued", canReingest: false }
+  }
+  if (task?.status === "error" && (String(task.file || "") === sourcePath || String(task.sourcePath || "") === sourcePath)) {
+    return { label: "提取失败", tone: "error", canReingest: true }
+  }
+  if (sourcePageSourcePaths.has(sourcePath)) {
+    return { label: "已完成", tone: "done", canReingest: true }
+  }
+  if (batchStatus.label === "已取消") {
+    return { label: "已取消", tone: "canceled", canReingest: false }
+  }
+  return { label: "待处理", tone: "queued", canReingest: true }
+}
+
 export function renderSourcesWorkspace({
   els,
   state,
@@ -115,7 +169,7 @@ export function renderSourcesWorkspace({
     const roots = Array.isArray(batch.roots) && batch.roots.length > 0
       ? batch.roots.join("、")
       : "未命名批次"
-    const items = Array.isArray(batch.items) ? batch.items.slice(0, 4) : []
+    const items = Array.isArray(batch.items) ? batch.items : []
     const pendingSourcePaths = (Array.isArray(batch.sourcePaths) ? batch.sourcePaths : []).filter((sourcePath) => {
       if (!treeFilePaths.has(sourcePath)) return false
       return !sourcePageSourcePaths.has(sourcePath)
@@ -150,15 +204,20 @@ export function renderSourcesWorkspace({
         ${items.map((item) => {
           const targetPath = item.startsWith("raw/") ? item : `raw/sources/${item}`
           const existsInTree = treeFilePaths.has(targetPath)
+          const task = findLatestRelevantTask(tasks, targetPath)
+          const itemState = summarizeSourceItemState(targetPath, batchStatus, treeFilePaths, sourcePageSourcePaths, task)
           return `
             <div class="import-batch-item-row">
               <button type="button" class="import-batch-item">${escapeHtml(item)}</button>
-              <button
-                type="button"
-                class="mini-button import-batch-reingest"
-                data-path="${escapeHtml(targetPath)}"
-                ${existsInTree ? "" : "disabled"}
-              >重新提取</button>
+              <div class="import-batch-item-side">
+                <span class="import-batch-file-status ${escapeHtml(statusTone(itemState.tone))}">${escapeHtml(itemState.label)}</span>
+                <button
+                  type="button"
+                  class="mini-button import-batch-reingest"
+                  data-path="${escapeHtml(targetPath)}"
+                  ${existsInTree && itemState.canReingest ? "" : "disabled"}
+                >重新提取</button>
+              </div>
             </div>
           `
         }).join("")}

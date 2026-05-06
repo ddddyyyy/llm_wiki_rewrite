@@ -665,10 +665,6 @@ textarea {
   gap: 8px;
 }
 
-#sources-task-panel .task-list {
-  max-height: none;
-}
-
 .sources-pending-list {
   display: grid;
   gap: 8px;
@@ -754,6 +750,56 @@ textarea {
   gap: 8px;
   align-items: center;
   width: 100%;
+}
+
+.import-batch-item-side {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+
+.import-batch-file-status {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(59, 74, 96, 0.1);
+  background: rgba(255, 255, 255, 0.8);
+  color: rgba(64, 79, 99, 0.82);
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.import-batch-file-status.is-running {
+  border-color: rgba(96, 126, 181, 0.22);
+  background: rgba(96, 126, 181, 0.12);
+  color: #4b689a;
+}
+
+.import-batch-file-status.is-queued {
+  border-color: rgba(184, 156, 104, 0.22);
+  background: rgba(217, 187, 122, 0.12);
+  color: #8d6b36;
+}
+
+.import-batch-file-status.is-done {
+  border-color: rgba(84, 151, 118, 0.24);
+  background: rgba(143, 211, 166, 0.16);
+  color: #3d7b59;
+}
+
+.import-batch-file-status.is-error {
+  border-color: rgba(194, 92, 76, 0.22);
+  background: rgba(194, 92, 76, 0.12);
+  color: #a14e41;
+}
+
+.import-batch-file-status.is-canceled {
+  border-color: rgba(111, 122, 141, 0.18);
+  background: rgba(183, 189, 201, 0.16);
+  color: #6b7588;
 }
 
 .import-batch-reingest {
