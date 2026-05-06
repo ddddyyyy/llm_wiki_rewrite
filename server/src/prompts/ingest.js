@@ -1,7 +1,7 @@
 import path from "node:path"
 import { languageInstruction } from "../lib/text.js"
 
-export function buildAnalysisPrompt({ schema, purpose, index, overview, sourcePath, sourceContent, targetLanguage }) {
+export function buildAnalysisPrompt({ schema, purpose, index, overview, sourcePath, sourceContent, targetLanguage, folderContext }) {
   return [
     targetLanguage === "en"
       ? "You are an expert research analyst. Read the source document and produce a structured analysis."
@@ -52,6 +52,8 @@ export function buildAnalysisPrompt({ schema, purpose, index, overview, sourcePa
       ? "If folder context is available, use it as a hint for categorization — folder structure often reflects the user's organizational intent."
       : "如果能从路径或目录结构中看出分类意图，请把它当作辅助线索使用。",
     "",
+    folderContext ? `## Folder Context\n${folderContext}` : "",
+    "",
     purpose ? `## Wiki Purpose (for context)\n${purpose}` : "",
     schema ? `## Wiki Schema\n${schema}` : "",
     index ? `## Current Wiki Index (for checking existing content)\n${index}` : "",
@@ -64,7 +66,7 @@ export function buildAnalysisPrompt({ schema, purpose, index, overview, sourcePa
   ].join("\n")
 }
 
-export function buildGenerationPrompt({ schema, purpose, index, overview, sourcePath, sourceContent, targetLanguage }) {
+export function buildGenerationPrompt({ schema, purpose, index, overview, sourcePath, sourceContent, targetLanguage, folderContext }) {
   const sourceFileName = path.basename(sourcePath)
   const sourceBaseName = sourceFileName.replace(/\.[^.]+$/, "")
   return [
@@ -121,6 +123,7 @@ export function buildGenerationPrompt({ schema, purpose, index, overview, source
     "",
     purpose ? `## Wiki Purpose\n${purpose}` : "",
     schema ? `## Wiki Schema\n${schema}` : "",
+    folderContext ? `## Folder Context\n${folderContext}` : "",
     index ? `## Current Wiki Index (preserve all existing entries, add new ones)\n${index}` : "",
     overview ? `## Current Overview (update this to reflect the new source)\n${overview}` : "",
     "",

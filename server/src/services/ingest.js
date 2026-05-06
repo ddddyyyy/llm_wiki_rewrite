@@ -77,6 +77,7 @@ export function createIngestService({
     const slug = slugifyFileStem(file.name)
     const wikiRelative = `wiki/sources/${slug}.md`
     const sourcePath = `raw/sources/${file.path}`
+    const folderContext = file.path.includes("/") ? file.path.split("/").slice(0, -1).join("/") : ""
 
     onProgress({ stage: "reading", message: `正在读取 ${file.path}...`, file: file.path })
 
@@ -122,6 +123,7 @@ export function createIngestService({
           sourcePath,
           sourceContent: truncatedSource,
           targetLanguage: promptLanguage,
+          folderContext,
         }),
       },
       {
@@ -130,6 +132,9 @@ export function createIngestService({
           promptLanguage === "en" ? "Analyze this source document:" : "请分析这个来源文档：",
           "",
           promptLanguage === "en" ? `**File:** ${file.name}` : `**文件：** ${file.name}`,
+          ...(folderContext
+            ? ["", promptLanguage === "en" ? `**Folder context:** ${folderContext}` : `**目录上下文：** ${folderContext}`]
+            : []),
           "",
           "---",
           "",
@@ -150,6 +155,7 @@ export function createIngestService({
           sourcePath,
           sourceContent: truncatedSource,
           targetLanguage: promptLanguage,
+          folderContext,
         }),
       },
       {
