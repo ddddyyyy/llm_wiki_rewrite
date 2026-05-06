@@ -17,6 +17,21 @@ function formatImportTime(value) {
   })
 }
 
+function formatTaskStage(value) {
+  const mapping = {
+    queued: "排队中",
+    scanning: "扫描中",
+    reading: "读取中",
+    analyzing: "分析中",
+    generating: "生成中",
+    writing: "写入中",
+    finalizing: "收尾中",
+    done: "已完成",
+    failed: "失败",
+  }
+  return mapping[value] || value || ""
+}
+
 function collectFilePaths(nodes, into = new Set()) {
   for (const node of nodes || []) {
     if (!node) continue
@@ -240,11 +255,20 @@ export function renderSourcesWorkspace({
                 label: activeIngestTask?.status === "running" && normalizeSourceTaskPath(activeIngestTask.file) === targetPath ? "提取中" : "排队中",
                 tone: activeIngestTask?.status === "running" && normalizeSourceTaskPath(activeIngestTask.file) === targetPath ? "running" : "queued",
                 canReingest: false,
+                stage: formatTaskStage(activeIngestTask?.stage),
               }
-            : itemState
+            : {
+                ...itemState,
+                stage: formatTaskStage(task?.stage),
+              }
           return `
             <div class="import-batch-item-row">
-              <button type="button" class="import-batch-item">${escapeHtml(item)}</button>
+              <div class="import-batch-item-main">
+                <button type="button" class="import-batch-item">${escapeHtml(item)}</button>
+                ${activeState.stage && ["提取中", "排队中", "提取失败"].includes(activeState.label)
+                  ? `<span class="import-batch-item-stage">${escapeHtml(activeState.stage)}</span>`
+                  : ""}
+              </div>
               <div class="import-batch-item-side">
                 <span class="import-batch-file-status ${escapeHtml(statusTone(activeState.tone))}">${escapeHtml(activeState.label)}</span>
                 <button

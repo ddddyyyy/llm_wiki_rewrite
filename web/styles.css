@@ -752,6 +752,19 @@ textarea {
   width: 100%;
 }
 
+.import-batch-item-main {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.import-batch-item-stage {
+  color: rgba(95, 109, 128, 0.74);
+  font-size: 0.76rem;
+  line-height: 1.2;
+  padding-left: 10px;
+}
+
 .import-batch-item-side {
   display: inline-flex;
   align-items: center;
