@@ -48,6 +48,16 @@ function layoutNodes(nodes, width, height) {
 }
 
 function clientPointToSvg(event, svg, width, height) {
+  if (typeof svg.createSVGPoint === "function") {
+    const point = svg.createSVGPoint()
+    point.x = event.clientX
+    point.y = event.clientY
+    const ctm = svg.getScreenCTM()
+    if (ctm) {
+      const transformed = point.matrixTransform(ctm.inverse())
+      return { x: transformed.x, y: transformed.y }
+    }
+  }
   const rect = svg.getBoundingClientRect()
   return {
     x: ((event.clientX - rect.left) / rect.width) * width,
@@ -163,7 +173,14 @@ export function renderGraphView({ els, state, onOpenFile, onPreviewNode }) {
     if (isSelected) group.classList.add("is-active")
     if (shouldDim) group.classList.add("is-dim")
     group.style.cursor = "pointer"
+    let dragMoved = false
     group.addEventListener("click", (event) => {
+      if (dragMoved) {
+        dragMoved = false
+        event.preventDefault()
+        event.stopPropagation()
+        return
+      }
       if (event.detail === 2) {
         void onOpenFile(node.path)
         return
@@ -202,13 +219,23 @@ export function renderGraphView({ els, state, onOpenFile, onPreviewNode }) {
       const startPoint = clientPointToSvg(event, svg, width, height)
       const offsetX = startPoint.x - node.x
       const offsetY = startPoint.y - node.y
+      let moved = false
       const move = (moveEvent) => {
         const point = clientPointToSvg(moveEvent, svg, width, height)
+        const nextX = Math.max(24, Math.min(width - 24, point.x - offsetX))
+        const nextY = Math.max(24, Math.min(height - 24, point.y - offsetY))
+        if (!moved) {
+          const deltaX = Math.abs(nextX - node.x)
+          const deltaY = Math.abs(nextY - node.y)
+          if (deltaX < 1 && deltaY < 1) return
+          moved = true
+          dragMoved = true
+        }
         state.graphNodePositions = {
           ...(state.graphNodePositions || {}),
           [node.id]: {
-            x: Math.max(24, Math.min(width - 24, point.x - offsetX)),
-            y: Math.max(24, Math.min(height - 24, point.y - offsetY)),
+            x: nextX,
+            y: nextY,
           },
         }
         renderGraphView({ els, state, onOpenFile, onPreviewNode })
