@@ -85,6 +85,7 @@ export async function buildKnowledgeView(projectId, deps) {
       title,
       created,
       updated,
+      sourcePath: readFrontmatterValue(contents, "source_path") || "",
       summary: snippetAround(stripFrontmatter(contents), ""),
     }
 

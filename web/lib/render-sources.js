@@ -17,20 +17,6 @@ function formatImportTime(value) {
   })
 }
 
-function slugifySourceStem(relativePath) {
-  return String(relativePath || "")
-    .split("/")
-    .pop()
-    ?.replace(/\.[^.]+$/, "")
-    .normalize("NFKC")
-    .trim()
-    .replace(/\s+/g, "-")
-    .replace(/[^\p{L}\p{N}-]/gu, "")
-    .replace(/-+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .toLowerCase() || ""
-}
-
 function collectFilePaths(nodes, into = new Set()) {
   for (const node of nodes || []) {
     if (!node) continue
@@ -43,15 +29,14 @@ function collectFilePaths(nodes, into = new Set()) {
   return into
 }
 
-function summarizeBatchStatus(sourcePaths, treeFilePaths, sourcePagePaths) {
+function summarizeBatchStatus(sourcePaths, treeFilePaths, sourcePageSourcePaths) {
   const allPaths = (Array.isArray(sourcePaths) ? sourcePaths : []).filter(Boolean)
   let pending = 0
   let completed = 0
   let canceled = 0
 
   for (const sourcePath of allPaths) {
-    const expectedSourcePagePath = `wiki/sources/${slugifySourceStem(sourcePath)}.md`
-    if (sourcePagePaths.has(expectedSourcePagePath)) {
+    if (sourcePageSourcePaths.has(sourcePath)) {
       completed += 1
     } else if (treeFilePaths.has(sourcePath)) {
       pending += 1
@@ -102,7 +87,11 @@ export function renderSourcesWorkspace({
   const batches = state.importHistory || []
   const batchIndex = Math.min(Math.max(state.sourcesBatchIndex || 0, 0), Math.max(batches.length - 1, 0))
   const treeFilePaths = collectFilePaths(state.treeNodes || [])
-  const sourcePagePaths = new Set((state.knowledge?.sections?.sources || []).map((item) => item.path))
+  const sourcePageSourcePaths = new Set(
+    (state.knowledge?.sections?.sources || [])
+      .map((item) => String(item.sourcePath || "").trim())
+      .filter(Boolean),
+  )
 
   els.sourcesImportHistory.innerHTML = ""
   if (batches.length === 0) {
@@ -128,10 +117,9 @@ export function renderSourcesWorkspace({
     const items = Array.isArray(batch.items) ? batch.items.slice(0, 4) : []
     const pendingSourcePaths = (Array.isArray(batch.sourcePaths) ? batch.sourcePaths : []).filter((sourcePath) => {
       if (!treeFilePaths.has(sourcePath)) return false
-      const expectedSourcePagePath = `wiki/sources/${slugifySourceStem(sourcePath)}.md`
-      return !sourcePagePaths.has(expectedSourcePagePath)
+      return !sourcePageSourcePaths.has(sourcePath)
     })
-    const batchStatus = summarizeBatchStatus(batch.sourcePaths, treeFilePaths, sourcePagePaths)
+    const batchStatus = summarizeBatchStatus(batch.sourcePaths, treeFilePaths, sourcePageSourcePaths)
     els.sourcesBatchRun.disabled = pendingSourcePaths.length === 0
     els.sourcesBatchDiscard.disabled = pendingSourcePaths.length === 0
     els.sourcesBatchRun.onclick = () => {
