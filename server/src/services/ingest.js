@@ -205,9 +205,9 @@ export function createIngestService({
     })
     const ingested = []
     const skipped = []
-    const projectContext = await loadProjectContext(projectId)
 
     for (const file of sourceFiles) {
+      const projectContext = await loadProjectContext(projectId)
       const result = await ingestSourceFile(projectId, file, projectContext, settings, onProgress, { force: false })
       if (result.skipped) skipped.push(file.path)
       else ingested.push(result)
