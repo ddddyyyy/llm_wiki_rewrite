@@ -71,6 +71,7 @@ export function renderSourcesWorkspace({
   els,
   state,
   onOpenFile,
+  onReingestSource,
   onRunBatchIngest,
   onDiscardBatchPending,
   onChangeBatchIndex,
@@ -146,13 +147,31 @@ export function renderSourcesWorkspace({
         </span>
       </div>
       <div class="import-batch-items">
-        ${items.map((item) => `<button type="button" class="import-batch-item">${escapeHtml(item)}</button>`).join("")}
+        ${items.map((item) => {
+          const targetPath = item.startsWith("raw/") ? item : `raw/sources/${item}`
+          const existsInTree = treeFilePaths.has(targetPath)
+          return `
+            <div class="import-batch-item-row">
+              <button type="button" class="import-batch-item">${escapeHtml(item)}</button>
+              <button
+                type="button"
+                class="mini-button import-batch-reingest"
+                data-path="${escapeHtml(targetPath)}"
+                ${existsInTree ? "" : "disabled"}
+              >重新提取</button>
+            </div>
+          `
+        }).join("")}
       </div>
     `
     items.forEach((item, index) => {
       article.querySelectorAll(".import-batch-item")[index]?.addEventListener("click", () => {
         const targetPath = item.startsWith("raw/") ? item : `raw/sources/${item}`
         void onOpenFile(targetPath)
+      })
+      article.querySelectorAll(".import-batch-reingest")[index]?.addEventListener("click", () => {
+        const targetPath = item.startsWith("raw/") ? item : `raw/sources/${item}`
+        void onReingestSource?.(targetPath)
       })
     })
     els.sourcesImportHistory.appendChild(article)

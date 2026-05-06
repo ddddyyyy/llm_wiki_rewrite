@@ -735,7 +735,7 @@ textarea {
 .import-batch-item {
   display: inline-flex;
   align-items: center;
-  max-width: 100%;
+  min-width: 0;
   min-height: 30px;
   padding: 0 10px;
   border: 1px solid rgba(59, 74, 96, 0.08);
@@ -746,6 +746,18 @@ textarea {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.import-batch-item-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  width: 100%;
+}
+
+.import-batch-reingest {
+  flex: 0 0 auto;
 }
 
 .import-batch-item:hover {

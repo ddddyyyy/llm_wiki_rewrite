@@ -325,6 +325,7 @@ function renderSourcesWorkspace() {
     els,
     state,
     onOpenFile: workspaceActions.openFile,
+    onReingestSource: workspaceActions.reingestSource,
     onRunBatchIngest: workspaceActions.runBatchIngest,
     onDiscardBatchPending: workspaceActions.discardBatchPending,
     onChangeBatchIndex: (direction) => {
