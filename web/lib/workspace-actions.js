@@ -257,7 +257,9 @@ export function createWorkspaceActions(deps) {
       await loadKnowledge()
       await loadGraph()
       await loadLens()
+      await loadImportHistory()
       await loadTree()
+      renderSourcesWorkspace()
     }
   }
 
