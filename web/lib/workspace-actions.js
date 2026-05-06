@@ -249,17 +249,18 @@ export function createWorkspaceActions(deps) {
     }
     const previous = state.tasks
     state.tasks = (await api.loadTasks(state.selectedProjectId)).tasks
-    renderSourcesWorkspace()
     const hadRunning = previous.some((task) => task.status === "running" || task.status === "queued")
     const hasRunning = state.tasks.some((task) => task.status === "running" || task.status === "queued")
-    if (hadRunning && !hasRunning) {
-      await refreshProjects()
+    if (!hasRunning) {
       await loadKnowledge()
-      await loadGraph()
-      await loadLens()
       await loadImportHistory()
       await loadTree()
-      renderSourcesWorkspace()
+    }
+    renderSourcesWorkspace()
+    if (hadRunning && !hasRunning) {
+      await refreshProjects()
+      await loadGraph()
+      await loadLens()
     }
   }
 
