@@ -210,6 +210,14 @@ function updateEditor() {
 
 function updateGraphPreview() {
   els.graphPreviewPath.textContent = state.graphPreviewPath || "点击图谱节点查看内容"
+  const hasSelection = Boolean(state.graphPreviewPath)
+  if (!hasSelection) {
+    els.graphPreviewPanel.hidden = false
+    els.graphPreviewPanel.textContent = "这里会显示节点对应页面的内容。"
+    els.graphPreviewPanel.classList.remove("markdown-rendered")
+    els.graphPreviewDownload.hidden = true
+    return
+  }
   const isTextMode = state.graphPreviewMode === "text"
   els.graphPreviewPanel.hidden = !isTextMode
   els.graphPreviewDownload.hidden = isTextMode
