@@ -167,7 +167,7 @@ function summarizeSourceItemState(sourcePath, batchStatus, treeFilePaths, source
 export function renderSourcesWorkspace({
   els,
   state,
-  onOpenFile,
+  onPreviewFile,
   onReingestSource,
   onRunBatchIngest,
   onDiscardBatchPending,
@@ -313,7 +313,7 @@ export function renderSourcesWorkspace({
     items.forEach((item, index) => {
       article.querySelectorAll(".import-batch-item")[index]?.addEventListener("click", () => {
         const targetPath = item.startsWith("raw/") ? item : `raw/sources/${item}`
-        void onOpenFile(targetPath)
+        void onPreviewFile?.(targetPath)
       })
       article.querySelectorAll(".import-batch-reingest")[index]?.addEventListener("click", () => {
         const targetPath = item.startsWith("raw/") ? item : `raw/sources/${item}`

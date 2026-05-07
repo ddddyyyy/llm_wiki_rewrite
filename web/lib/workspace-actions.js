@@ -108,6 +108,10 @@ export function createWorkspaceActions(deps) {
     state.graphPreviewContents = ""
     state.graphPreviewMode = "empty"
     state.graphPreviewDownloadUrl = ""
+    state.sourcesPreviewPath = null
+    state.sourcesPreviewContents = ""
+    state.sourcesPreviewMode = "empty"
+    state.sourcesPreviewDownloadUrl = ""
     state.graphNodePositions = {}
     state.lint = null
     state.lens = null
@@ -506,6 +510,33 @@ export function createWorkspaceActions(deps) {
     setStatus(response.previewMode === "cached-text"
       ? `已在图谱侧栏打开 ${response.path} 的提取文本缓存`
       : `已在图谱侧栏打开 ${response.path}`)
+  }
+
+  async function previewSourceFile(relativePath) {
+    if (!state.selectedProjectId) return
+    if (!relativePath) {
+      state.sourcesPreviewPath = null
+      state.sourcesPreviewContents = ""
+      state.sourcesPreviewMode = "empty"
+      state.sourcesPreviewDownloadUrl = ""
+      renderSourcesWorkspace()
+      return
+    }
+    const response = await api.openFile(state.selectedProjectId, relativePath)
+    state.sourcesPreviewPath = response.path
+    if (!isPreviewableTextFile(relativePath) && response.previewMode !== "cached-text") {
+      state.sourcesPreviewContents = ""
+      state.sourcesPreviewMode = "download"
+      state.sourcesPreviewDownloadUrl = api.buildDownloadUrl(state.selectedProjectId, relativePath)
+    } else {
+      state.sourcesPreviewContents = response.contents
+      state.sourcesPreviewMode = "text"
+      state.sourcesPreviewDownloadUrl = ""
+    }
+    renderSourcesWorkspace()
+    setStatus(response.previewMode === "cached-text"
+      ? `已在来源页预览 ${response.path} 的提取文本缓存`
+      : `已在来源页预览 ${response.path}`)
   }
 
   async function deleteSource(relativePath) {
@@ -995,6 +1026,7 @@ export function createWorkspaceActions(deps) {
     filterTreeNodes,
     openFile,
     previewGraphNode,
+    previewSourceFile,
     deleteSource,
     runSearch,
     createProject,

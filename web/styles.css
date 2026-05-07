@@ -512,9 +512,16 @@ textarea {
 
 .sources-workspace {
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
   gap: 12px;
   height: 100%;
+  min-height: 0;
+}
+
+.sources-main {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 12px;
   min-height: 0;
 }
 
@@ -533,6 +540,27 @@ textarea {
   margin: 2px 0 0;
   font-size: 0.82rem;
   line-height: 1.35;
+}
+
+.sources-preview {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  min-height: 0;
+  border: 1px solid rgba(59, 74, 96, 0.08);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.78);
+  overflow: hidden;
+}
+
+.sources-preview-toolbar {
+  padding: 14px 16px 10px;
+  border-bottom: 1px solid rgba(59, 74, 96, 0.08);
+}
+
+.sources-preview-panel {
+  min-height: 0;
+  height: 100%;
+  background: transparent;
 }
 
 .section-header {

@@ -31,6 +31,10 @@ const state = {
   graphPreviewContents: "",
   graphPreviewMode: "empty",
   graphPreviewDownloadUrl: "",
+  sourcesPreviewPath: null,
+  sourcesPreviewContents: "",
+  sourcesPreviewMode: "empty",
+  sourcesPreviewDownloadUrl: "",
   graphNodePositions: {},
   lastQuestion: "",
   conversations: [],
@@ -145,6 +149,11 @@ const els = {
   graphPreviewDownload: document.querySelector("#graph-preview-download"),
   graphPreviewDownloadCopy: document.querySelector("#graph-preview-download-copy"),
   graphPreviewDownloadLink: document.querySelector("#graph-preview-download-link"),
+  sourcesPreviewPath: document.querySelector("#sources-preview-path"),
+  sourcesPreviewPanel: document.querySelector("#sources-preview-panel"),
+  sourcesPreviewDownload: document.querySelector("#sources-preview-download"),
+  sourcesPreviewDownloadCopy: document.querySelector("#sources-preview-download-copy"),
+  sourcesPreviewDownloadLink: document.querySelector("#sources-preview-download-link"),
   graphTypeFilter: document.querySelector("#graph-type-filter"),
   graphNeighborOnly: document.querySelector("#graph-neighbor-only"),
   runLintButton: document.querySelector("#run-lint-button"),
@@ -232,6 +241,40 @@ function updateGraphPreview() {
     : "当前节点内容不可直接预览，请下载查看。"
 }
 
+function updateSourcesPreview() {
+  els.sourcesPreviewPath.textContent = state.sourcesPreviewPath || "点击文件名查看内容"
+  const hasSelection = Boolean(state.sourcesPreviewPath)
+  if (!hasSelection) {
+    els.sourcesPreviewPanel.hidden = false
+    els.sourcesPreviewPanel.textContent = "这里会显示来源文件内容。"
+    els.sourcesPreviewPanel.classList.remove("markdown-rendered")
+    els.sourcesPreviewDownload.hidden = true
+    return
+  }
+  const isTextMode = state.sourcesPreviewMode === "text"
+  els.sourcesPreviewPanel.hidden = !isTextMode
+  els.sourcesPreviewDownload.hidden = isTextMode
+
+  if (isTextMode) {
+    if (isMarkdownPath(state.sourcesPreviewPath)) {
+      els.sourcesPreviewPanel.innerHTML = state.sourcesPreviewContents
+        ? renderMarkdownToHtml(state.sourcesPreviewContents)
+        : "<p>这里会显示来源文件内容。</p>"
+      els.sourcesPreviewPanel.classList.add("markdown-rendered")
+    } else {
+      els.sourcesPreviewPanel.textContent = state.sourcesPreviewContents || "这里会显示来源文件内容。"
+      els.sourcesPreviewPanel.classList.remove("markdown-rendered")
+    }
+    return
+  }
+
+  els.sourcesPreviewDownloadLink.href = state.sourcesPreviewDownloadUrl || "#"
+  els.sourcesPreviewDownloadLink.setAttribute("download", state.sourcesPreviewPath?.split("/").pop() || "download")
+  els.sourcesPreviewDownloadCopy.textContent = state.sourcesPreviewPath
+    ? `当前来源 ${state.sourcesPreviewPath} 不支持网页预览，请直接下载查看。`
+    : "当前来源文件不可直接预览，请下载查看。"
+}
+
 function updateUploadState() {
   const enabled = Boolean(state.selectedProjectId)
   els.uploadButton.classList.toggle("disabled", !enabled)
@@ -313,7 +356,7 @@ function renderSourcesWorkspace() {
   renderSourcesWorkspaceView({
     els,
     state,
-    onOpenFile: workspaceActions.openFile,
+    onPreviewFile: workspaceActions.previewSourceFile,
     onReingestSource: workspaceActions.reingestSource,
     onRunBatchIngest: workspaceActions.runBatchIngest,
     onDiscardBatchPending: workspaceActions.discardBatchPending,
@@ -328,6 +371,7 @@ function renderSourcesWorkspace() {
       renderSourcesWorkspace()
     },
   })
+  updateSourcesPreview()
 }
 
 function renderSourceTreePanel() {

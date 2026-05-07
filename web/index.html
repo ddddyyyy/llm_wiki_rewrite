@@ -184,46 +184,61 @@
 
             <section id="detail-sources" class="detail-section" hidden>
               <div class="sources-workspace">
-                <section class="sources-summary-card">
-                  <div>
-                    <div class="section-title">来源导入工作台</div>
-                    <p class="panel-copy">文件上传成功后会自动启动本批提取，这里只保留批次跟踪和失败后的补救动作。</p>
-                  </div>
-                  <div class="sources-summary-grid">
-                    <div class="sources-summary-item">
-                      <strong id="sources-summary-total">0</strong>
-                      <span>任务总数</span>
-                    </div>
-                    <div class="sources-summary-item">
-                      <strong id="sources-summary-running">0</strong>
-                      <span>进行中</span>
-                    </div>
-                    <div class="sources-summary-item">
-                      <strong id="sources-summary-done">0</strong>
-                      <span>已完成</span>
-                    </div>
-                    <div class="sources-summary-item">
-                      <strong id="sources-summary-error">0</strong>
-                      <span>失败</span>
-                    </div>
-                  </div>
-                </section>
-                <section class="sources-records-card sources-records-card--compact">
-                  <div class="section-header section-header--records">
+                <div class="sources-main">
+                  <section class="sources-summary-card">
                     <div>
-                      <div class="section-title">最近导入批次</div>
-                      <p id="sources-records-copy" class="panel-copy">文件夹导入会保留层级结构，这里可以逐笔查看并只提取当前这一批。</p>
+                      <div class="section-title">来源导入工作台</div>
+                      <p class="panel-copy">文件上传成功后会自动启动本批提取，这里只保留批次跟踪和失败后的补救动作。</p>
                     </div>
-                    <div id="sources-record-batch-nav" class="sources-record-batch-nav">
-                      <button id="sources-batch-prev" type="button" class="mini-button">上一笔</button>
-                      <span id="sources-batch-indicator" class="item-meta">1 / 1</span>
-                      <button id="sources-batch-next" type="button" class="mini-button">下一笔</button>
-                      <button id="sources-batch-run" type="button" class="mini-button">只提取本批</button>
-                      <button id="sources-batch-discard" type="button" class="mini-button">取消本批待处理</button>
+                    <div class="sources-summary-grid">
+                      <div class="sources-summary-item">
+                        <strong id="sources-summary-total">0</strong>
+                        <span>任务总数</span>
+                      </div>
+                      <div class="sources-summary-item">
+                        <strong id="sources-summary-running">0</strong>
+                        <span>进行中</span>
+                      </div>
+                      <div class="sources-summary-item">
+                        <strong id="sources-summary-done">0</strong>
+                        <span>已完成</span>
+                      </div>
+                      <div class="sources-summary-item">
+                        <strong id="sources-summary-error">0</strong>
+                        <span>失败</span>
+                      </div>
+                    </div>
+                  </section>
+                  <section class="sources-records-card sources-records-card--compact">
+                    <div class="section-header section-header--records">
+                      <div>
+                        <div class="section-title">最近导入批次</div>
+                        <p id="sources-records-copy" class="panel-copy">文件夹导入会保留层级结构，这里可以逐笔查看并在失败后补救当前这一批。</p>
+                      </div>
+                      <div id="sources-record-batch-nav" class="sources-record-batch-nav">
+                        <button id="sources-batch-prev" type="button" class="mini-button">上一笔</button>
+                        <span id="sources-batch-indicator" class="item-meta">1 / 1</span>
+                        <button id="sources-batch-next" type="button" class="mini-button">下一笔</button>
+                        <button id="sources-batch-run" type="button" class="mini-button">只提取本批</button>
+                        <button id="sources-batch-discard" type="button" class="mini-button">取消本批待处理</button>
+                      </div>
+                    </div>
+                    <div id="sources-import-history" class="sources-import-history"></div>
+                  </section>
+                </div>
+                <aside class="sources-preview">
+                  <div class="sources-preview-toolbar">
+                    <div>
+                      <div class="section-title section-title--small">来源预览</div>
+                      <div id="sources-preview-path" class="current-path">点击文件名查看内容</div>
                     </div>
                   </div>
-                  <div id="sources-import-history" class="sources-import-history"></div>
-                </section>
+                  <div id="sources-preview-panel" class="preview-panel sources-preview-panel">这里会显示来源文件内容。</div>
+                  <div id="sources-preview-download" class="download-panel" hidden>
+                    <div id="sources-preview-download-copy" class="panel-copy">当前来源文件不可直接预览，请下载查看。</div>
+                    <a id="sources-preview-download-link" class="secondary-button" href="#" download>下载文件</a>
+                  </div>
+                </aside>
               </div>
             </section>
 
