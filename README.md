@@ -8,15 +8,15 @@
 
 ### 来源页
 
-![来源页运行界面](docs/screenshots/source-page.svg)
+![来源页运行界面](docs/screenshots/source-page-real.png)
 
 ### 知识图谱页
 
-![知识图谱页运行界面](docs/screenshots/graph-page.svg)
+![知识图谱页运行界面](docs/screenshots/graph-page-real.png)
 
 ### 问答页
 
-![问答页运行界面](docs/screenshots/chat-page.svg)
+![问答页运行界面](docs/screenshots/chat-page-real.png)
 
 ## 功能概览
 
