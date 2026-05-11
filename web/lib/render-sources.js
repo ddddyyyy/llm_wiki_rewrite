@@ -139,29 +139,34 @@ function normalizeSourceTaskPath(value) {
 
 function summarizeSourceItemState(sourcePath, batchStatus, treeFilePaths, sourcePageSourcePaths, sourcePageSourceNames, task) {
   if (!treeFilePaths.has(sourcePath)) {
-    return { label: "已取消", tone: "canceled", canReingest: false }
+    return { label: "已取消", tone: "canceled", canReingest: false, detail: "" }
   }
   if (task?.status === "running") {
     if (normalizeSourceTaskPath(task.file) === sourcePath) {
-      return { label: "提取中", tone: "running", canReingest: false }
+      return { label: "提取中", tone: "running", canReingest: false, detail: "" }
     }
     if (Array.isArray(task.sourcePaths) && task.sourcePaths.includes(sourcePath)) {
-      return { label: "等待本批", tone: "queued", canReingest: false }
+      return { label: "等待本批", tone: "queued", canReingest: false, detail: "" }
     }
   }
   if (task?.status === "queued") {
-    return { label: "排队中", tone: "queued", canReingest: false }
+    return { label: "排队中", tone: "queued", canReingest: false, detail: "" }
   }
   if (task?.status === "error" && (normalizeSourceTaskPath(task.file) === sourcePath || normalizeSourceTaskPath(task.sourcePath) === sourcePath)) {
-    return { label: "提取失败", tone: "error", canReingest: false }
+    return {
+      label: "提取失败",
+      tone: "error",
+      canReingest: true,
+      detail: String(task.error || task.message || "").trim(),
+    }
   }
   if (isSourceCompleted(sourcePath, sourcePageSourcePaths, sourcePageSourceNames)) {
-    return { label: "已完成", tone: "done", canReingest: true }
+    return { label: "已完成", tone: "done", canReingest: true, detail: "" }
   }
   if (batchStatus.label === "已取消") {
-    return { label: "已取消", tone: "canceled", canReingest: false }
+    return { label: "已取消", tone: "canceled", canReingest: false, detail: "" }
   }
-  return { label: "待处理", tone: "queued", canReingest: true }
+  return { label: "待处理", tone: "queued", canReingest: false, detail: "" }
 }
 
 export function renderSourcesWorkspace({
@@ -287,15 +292,22 @@ export function renderSourcesWorkspace({
                 tone: activeIngestTask?.status === "running" && normalizeSourceTaskPath(activeIngestTask.file) === targetPath ? "running" : "queued",
                 canReingest: false,
                 stage: formatTaskStage(activeIngestTask?.stage),
+                detail: "",
               }
             : {
                 ...itemState,
                 stage: formatTaskStage(task?.stage),
               }
           const detailLabel = activeState.label === "提取中" && activeState.stage ? activeState.stage : activeState.label
+          const detailCopy = activeState.tone === "error"
+            ? activeState.detail
+            : (activeState.label === "提取中" && activeState.stage ? activeState.stage : "")
           return `
             <div class="import-batch-item-row">
-              <button type="button" class="import-batch-item">${escapeHtml(item)}</button>
+              <div class="import-batch-item-main">
+                <button type="button" class="import-batch-item">${escapeHtml(item)}</button>
+                ${detailCopy ? `<div class="import-batch-item-stage">${escapeHtml(detailCopy)}</div>` : ""}
+              </div>
               <div class="import-batch-item-side">
                 <span class="import-batch-file-status ${escapeHtml(statusTone(activeState.tone))}">${escapeHtml(detailLabel)}</span>
                 <button
