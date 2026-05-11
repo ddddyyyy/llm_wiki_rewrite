@@ -795,6 +795,32 @@ textarea {
   word-break: break-word;
 }
 
+.import-batch-item-stage--error {
+  color: #a14e41;
+}
+
+.import-batch-error-details {
+  padding-left: 10px;
+}
+
+.import-batch-error-details summary {
+  cursor: pointer;
+  list-style: none;
+}
+
+.import-batch-error-details summary::-webkit-details-marker {
+  display: none;
+}
+
+.import-batch-error-body {
+  margin-top: 4px;
+  color: rgba(95, 109, 128, 0.82);
+  font-size: 0.75rem;
+  line-height: 1.35;
+  white-space: normal;
+  word-break: break-word;
+}
+
 .import-batch-item-side {
   display: inline-flex;
   align-self: start;

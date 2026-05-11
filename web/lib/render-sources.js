@@ -137,6 +137,21 @@ function normalizeSourceTaskPath(value) {
   return path.startsWith("raw/sources/") ? path : `raw/sources/${path}`
 }
 
+function buildErrorDetail(detail) {
+  const value = String(detail || "").trim()
+  if (!value) return ""
+  const summary = value.length > 56 ? `${value.slice(0, 56)}...` : value
+  if (value.length <= 56) {
+    return `<div class="import-batch-item-stage import-batch-item-stage--error">${escapeHtml(summary)}</div>`
+  }
+  return `
+    <details class="import-batch-error-details">
+      <summary class="import-batch-item-stage import-batch-item-stage--error">${escapeHtml(summary)}</summary>
+      <div class="import-batch-error-body">${escapeHtml(value)}</div>
+    </details>
+  `
+}
+
 function summarizeSourceItemState(sourcePath, batchStatus, treeFilePaths, sourcePageSourcePaths, sourcePageSourceNames, task) {
   if (!treeFilePaths.has(sourcePath)) {
     return { label: "已取消", tone: "canceled", canReingest: false, detail: "" }
@@ -299,14 +314,16 @@ export function renderSourcesWorkspace({
                 stage: formatTaskStage(task?.stage),
               }
           const detailLabel = activeState.label === "提取中" && activeState.stage ? activeState.stage : activeState.label
-          const detailCopy = activeState.tone === "error"
-            ? activeState.detail
-            : (activeState.label === "提取中" && activeState.stage ? activeState.stage : "")
+          const detailMarkup = activeState.tone === "error"
+            ? buildErrorDetail(activeState.detail)
+            : (activeState.label === "提取中" && activeState.stage
+                ? `<div class="import-batch-item-stage">${escapeHtml(activeState.stage)}</div>`
+                : "")
           return `
             <div class="import-batch-item-row">
               <div class="import-batch-item-main">
                 <button type="button" class="import-batch-item">${escapeHtml(item)}</button>
-                ${detailCopy ? `<div class="import-batch-item-stage">${escapeHtml(detailCopy)}</div>` : ""}
+                ${detailMarkup}
               </div>
               <div class="import-batch-item-side">
                 <span class="import-batch-file-status ${escapeHtml(statusTone(activeState.tone))}">${escapeHtml(detailLabel)}</span>
