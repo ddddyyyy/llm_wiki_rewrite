@@ -11,6 +11,17 @@ import {
   buildLog,
 } from "../../../shared/project-templates.js"
 
+const SUPPORTED_SOURCE_EXTENSIONS = new Set([
+  ".pdf",
+  ".docx",
+  ".xlsx",
+  ".pptx",
+  ".md",
+  ".markdown",
+  ".txt",
+  ".csv",
+])
+
 export function createProjectService({ projectFs }) {
   const {
     projectsRoot,
@@ -30,6 +41,11 @@ export function createProjectService({ projectFs }) {
       .replace(/^raw\/sources\//, "")
       .split("/")
       .some((segment) => segment.startsWith("."))
+  }
+
+  function isSupportedSourcePath(relativePath) {
+    const extension = path.extname(String(relativePath || "")).toLowerCase()
+    return SUPPORTED_SOURCE_EXTENSIONS.has(extension)
   }
 
   async function updateProjectTimestamp(projectId) {
@@ -68,11 +84,16 @@ export function createProjectService({ projectFs }) {
     }
     const uploaded = []
     const skippedHidden = []
+    const skippedUnsupported = []
     for (const file of files) {
       const relativePath = String(file.path || "").trim()
       if (!relativePath) continue
       if (hasHiddenSegment(relativePath)) {
         skippedHidden.push(relativePath)
+        continue
+      }
+      if (!isSupportedSourcePath(relativePath)) {
+        skippedUnsupported.push(relativePath)
         continue
       }
       const base64 = String(file.base64 || "")
@@ -86,7 +107,7 @@ export function createProjectService({ projectFs }) {
     }
 
     await updateProjectTimestamp(projectId)
-    return { ok: true, uploaded, skippedHidden }
+    return { ok: true, uploaded, skippedHidden, skippedUnsupported }
   }
 
   async function listProjects() {

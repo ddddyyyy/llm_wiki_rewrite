@@ -22,6 +22,16 @@ export function createWorkspaceActions(deps) {
   let actions = null
   let activeChatAbortController = null
   const PREVIEWABLE_TEXT_EXTENSIONS = new Set(["md", "markdown", "txt", "csv"])
+  const SUPPORTED_SOURCE_EXTENSIONS = new Set([
+    "pdf",
+    "docx",
+    "xlsx",
+    "pptx",
+    "md",
+    "markdown",
+    "txt",
+    "csv",
+  ])
 
   function hydrateChatMessages(messages) {
     let lastUserQuestion = ""
@@ -66,6 +76,11 @@ export function createWorkspaceActions(deps) {
     return !String(relativePath || "")
       .split("/")
       .some((segment) => segment.startsWith("."))
+  }
+
+  function isSupportedUploadPath(relativePath) {
+    const ext = String(relativePath || "").split(".").pop()?.toLowerCase() || ""
+    return SUPPORTED_SOURCE_EXTENSIONS.has(ext)
   }
 
   function applyDefaultTreeExpansion(nodes) {
@@ -678,9 +693,18 @@ export function createWorkspaceActions(deps) {
     setStatus(mode === "folder" ? `正在导入文件夹，包含 ${files.length} 个文件...` : `正在上传 ${files.length} 个文件...`)
 
     const payload = []
+    let skippedHidden = 0
+    let skippedUnsupported = 0
     for (const file of files) {
       const sourcePath = file.webkitRelativePath || file.name
-      if (!isVisibleUploadPath(sourcePath)) continue
+      if (!isVisibleUploadPath(sourcePath)) {
+        skippedHidden += 1
+        continue
+      }
+      if (!isSupportedUploadPath(sourcePath)) {
+        skippedUnsupported += 1
+        continue
+      }
       const buffer = await file.arrayBuffer()
       const bytes = new Uint8Array(buffer)
       let binary = ""
@@ -694,7 +718,12 @@ export function createWorkspaceActions(deps) {
     if (payload.length === 0) {
       input.value = ""
       labelEl.textContent = mode === "folder" ? "导入文件夹" : "上传源文件"
-      setStatus("已跳过隐藏文件，本次没有可导入的文件。")
+      const reasons = []
+      if (skippedHidden > 0) reasons.push(`隐藏文件 ${skippedHidden} 个`)
+      if (skippedUnsupported > 0) reasons.push(`不支持类型 ${skippedUnsupported} 个`)
+      setStatus(reasons.length > 0
+        ? `已跳过${reasons.join("，")}，本次没有可导入的文件。`
+        : "没有可导入的文件。")
       return
     }
 
@@ -710,8 +739,13 @@ export function createWorkspaceActions(deps) {
     await loadTree()
     renderSourcesWorkspace()
     const roots = response.batch?.roots?.length ? `：${response.batch.roots.join("、")}` : ""
-    const hiddenSuffix = response.skippedHidden?.length
-      ? `，已跳过 ${response.skippedHidden.length} 个隐藏文件`
+    const skippedHiddenCount = skippedHidden + (response.skippedHidden?.length || 0)
+    const skippedUnsupportedCount = skippedUnsupported + (response.skippedUnsupported?.length || 0)
+    const skippedParts = []
+    if (skippedHiddenCount > 0) skippedParts.push(`${skippedHiddenCount} 个隐藏文件`)
+    if (skippedUnsupportedCount > 0) skippedParts.push(`${skippedUnsupportedCount} 个不支持类型文件`)
+    const hiddenSuffix = skippedParts.length > 0
+      ? `，已跳过 ${skippedParts.join("，")}`
       : ""
     setStatus(mode === "folder"
       ? `已导入 ${response.uploaded.length} 个文件${roots}${hiddenSuffix}，正在自动启动提取...`
