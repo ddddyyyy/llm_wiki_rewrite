@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises"
 import JSZip from "jszip"
-import WordExtractor from "word-extractor"
+import WordExtractor from "../../../vendor/word-extractor/lib/word.js"
 
 let pdfJsModulePromise = null
 let wordExtractorInstance = null

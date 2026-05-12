@@ -125,6 +125,7 @@
 - 后端：Node.js（ESM）
 - 文档提取：
   - PDF：本地 vendored `pdf.js`
+  - DOC：本地 vendored `word-extractor`
   - DOCX / XLSX / PPTX：`jszip` + XML 解析
   - 文本文件：原生 `TextDecoder`
 
@@ -153,7 +154,8 @@
 │   └── src/
 ├── shared/
 ├── vendor/
-│   └── pdfjs/
+│   ├── pdfjs/
+│   └── word-extractor/
 ├── web/
 ├── Dockerfile
 ├── docker-compose.yml
