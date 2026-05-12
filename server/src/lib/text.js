@@ -129,6 +129,7 @@ export function normalizeGeneratedMarkdown(content) {
   if (fencedMatch) {
     normalized = fencedMatch[1].trim()
   }
+  normalized = normalized.replace(/\n\s*---\s*END\s+FILE\s*---\s*$/i, "")
   normalized = normalized.replace(/202X-XX-XX/g, formatDate())
   return normalized.trimEnd() + "\n"
 }

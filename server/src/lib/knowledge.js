@@ -124,7 +124,7 @@ export function parseFileBlocks(text) {
   const blocks = []
   const warnings = []
   const opener = /^---\s*FILE:\s*(.+?)\s*---\s*$/i
-  const closer = /^---\s*END\s+FILE\s*---\s*$/i
+  const closer = /^\s*---\s*END\s+FILE\s*---\s*$/i
   const fence = /^\s{0,3}(```+|~~~+)/
 
   let index = 0
