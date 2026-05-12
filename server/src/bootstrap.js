@@ -121,6 +121,60 @@ export function createAppServices(runtime) {
     projectService,
   })
 
+  function normalizeSourcePath(sourcePath) {
+    const normalized = String(sourcePath || "").trim().replace(/\\/g, "/").replace(/^\/+/, "")
+    if (!normalized) return ""
+    return normalized.startsWith("raw/") ? normalized : `raw/sources/${normalized}`
+  }
+
+  async function findImportBatchForSource(projectId, sourcePath) {
+    const normalizedSourcePath = normalizeSourcePath(sourcePath)
+    if (!normalizedSourcePath) return null
+    const batches = await importHistoryService.loadImportHistory(projectId)
+    return batches.find((batch) =>
+      Array.isArray(batch?.sourcePaths)
+      && batch.sourcePaths.some((item) => normalizeSourcePath(item) === normalizedSourcePath)
+    ) || null
+  }
+
+  async function collectRemainingBatchSourcePaths(projectId, batch) {
+    const requestedPaths = [...new Set(
+      (Array.isArray(batch?.sourcePaths) ? batch.sourcePaths : [])
+        .map(normalizeSourcePath)
+        .filter(Boolean),
+    )]
+    if (requestedPaths.length === 0) return []
+
+    const rawSourcesRoot = projectService.ensureInsideProject(projectId, "raw/sources").fullPath
+    const existingSourcePaths = new Set()
+    if (await projectFs.exists(rawSourcesRoot)) {
+      const rawFiles = await projectFs.collectFiles(rawSourcesRoot)
+      for (const file of rawFiles) {
+        existingSourcePaths.add(normalizeSourcePath(`raw/sources/${file.path}`))
+      }
+    }
+
+    const knowledge = await wikiService.buildKnowledgeView(projectId)
+    const completedSourcePaths = new Set()
+    const completedSourceNames = new Set()
+    for (const item of knowledge.sections.sources || []) {
+      const itemSourcePath = normalizeSourcePath(item?.sourcePath || "")
+      if (itemSourcePath) completedSourcePaths.add(itemSourcePath)
+      for (const sourceFile of Array.isArray(item?.sourceFiles) ? item.sourceFiles : []) {
+        const fileName = path.basename(String(sourceFile || "").trim())
+        if (fileName) completedSourceNames.add(fileName)
+      }
+    }
+
+    return requestedPaths.filter((candidatePath) => {
+      if (!existingSourcePaths.has(candidatePath)) return false
+      if (completedSourcePaths.has(candidatePath)) return false
+      const fileName = path.basename(candidatePath)
+      if (completedSourceNames.has(fileName)) return false
+      return true
+    })
+  }
+
   async function startIngestTask(projectId, options = {}) {
     await taskService.loadTaskStore()
     const requestedSourcePaths = Array.isArray(options.sourcePaths)
@@ -226,11 +280,30 @@ export function createAppServices(runtime) {
             await taskService.persistTaskStore()
           }),
         )
+        const batch = await findImportBatchForSource(projectId, sourcePath)
+        let resumedTask = null
+        if (batch) {
+          const remainingSourcePaths = await collectRemainingBatchSourcePaths(projectId, batch)
+          if (remainingSourcePaths.length > 0) {
+            resumedTask = await startIngestTask(projectId, {
+              batchId: batch.id,
+              sourcePaths: remainingSourcePaths,
+            })
+          }
+        }
         taskService.updateTask(task.id, {
           status: "done",
           stage: "done",
-          message: `已重新提取 ${sourcePath}`,
-          result,
+          message: resumedTask
+            ? `已重新提取 ${sourcePath}，并继续本批剩余 ${Array.isArray(resumedTask.sourcePaths) ? resumedTask.sourcePaths.length : 0} 个文件。`
+            : `已重新提取 ${sourcePath}`,
+          result: resumedTask
+            ? {
+              ...result,
+              resumedTaskId: resumedTask.id,
+              resumedSourcePaths: Array.isArray(resumedTask.sourcePaths) ? resumedTask.sourcePaths : [],
+            }
+            : result,
         })
         await taskService.persistTaskStore()
       } catch (error) {
