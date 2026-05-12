@@ -75,7 +75,7 @@ export async function buildProjectLens(projectId, deps) {
   const knowledge = await buildKnowledgeView(projectId)
   const rawRoot = ensureInsideProject(projectId, "raw/sources").fullPath
   const rawFiles = await collectFiles(rawRoot).catch(() => [])
-  const sourceLike = rawFiles.filter((file) => /\.(md|txt|markdown|pdf|docx|pptx|xlsx|csv)$/i.test(file.name))
+  const sourceLike = rawFiles.filter((file) => /\.(md|txt|markdown|pdf|doc|docx|pptx|xlsx|csv)$/i.test(file.name))
   const sourcePages = knowledge.sections.sources || []
   const sourcePagePaths = new Set(sourcePages.map((item) => item.path))
   const orphanSources = []

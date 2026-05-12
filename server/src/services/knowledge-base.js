@@ -29,7 +29,7 @@ export function createKnowledgeBaseService({
   const { readProjectFile } = projectService
   const MAX_HISTORY_MESSAGES = 10
   const TEXT_SOURCE_EXTS = /\.(md|txt|markdown|csv)$/i
-  const BINARY_SOURCE_EXTS = /\.(pdf|docx|pptx|xlsx)$/i
+  const BINARY_SOURCE_EXTS = /\.(pdf|doc|docx|pptx|xlsx)$/i
 
   async function readChatContextFile(projectId, filePath) {
     if (String(filePath || "").startsWith("wiki/")) {

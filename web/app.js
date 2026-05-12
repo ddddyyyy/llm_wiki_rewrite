@@ -192,7 +192,7 @@ function updateEditor() {
   const deletableSource = Boolean(state.selectedProjectId && String(state.selectedPath || "").startsWith("raw/sources/"))
   const reingestableSource = Boolean(
     state.selectedProjectId
-    && /\.(md|txt|markdown|pdf|docx|pptx|xlsx|csv)$/i.test(String(state.selectedPath || ""))
+    && /\.(md|txt|markdown|pdf|doc|docx|pptx|xlsx|csv)$/i.test(String(state.selectedPath || ""))
     && String(state.selectedPath || "").startsWith("raw/sources/"),
   )
   els.saveButton.disabled = !(isTextMode && state.selectedProjectId && state.selectedPath)

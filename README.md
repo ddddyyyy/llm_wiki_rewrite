@@ -53,8 +53,8 @@
 
 ### 3. 文档解析与缓存复用
 
-- 支持 `md/txt/csv/pdf/docx/xlsx/pptx`
-- `pdf/docx/xlsx/pptx` 会先提取文本，再缓存到项目内部目录
+- 支持 `md/txt/csv/pdf/doc/docx/xlsx/pptx`
+- `pdf/doc/docx/xlsx/pptx` 会先提取文本，再缓存到项目内部目录
 - 后续预览、搜索、问答都会优先复用这些缓存文本
 - 当前项目已经不再依赖 Python 运行时
 
@@ -101,8 +101,8 @@
 | 来源批次管理 | 已完成 | 支持最近导入批次查看、只提取本批、取消本批待处理、批次去重 |
 | 单文件重提取 | 已完成 | 支持对来源文件单独重新提取 |
 | 提取任务 | 已完成 | 支持任务状态、失败重试、批次任务与单文件任务区分 |
-| 文档解析 | 已完成 | 支持 `md/txt/csv/pdf/docx/xlsx/pptx`，且不依赖 Python |
-| 来源文本缓存 | 已完成 | `pdf/docx/xlsx/pptx` 会缓存提取文本，供预览、搜索、问答复用 |
+| 文档解析 | 已完成 | 支持 `md/txt/csv/pdf/doc/docx/xlsx/pptx`，且不依赖 Python |
+| 来源文本缓存 | 已完成 | `pdf/doc/docx/xlsx/pptx` 会缓存提取文本，供预览、搜索、问答复用 |
 | 知识库生成 | 已完成 | 生成 `sources/concepts/entities/queries/synthesis/index/overview/log` |
 | 中文文件名 | 已完成 | 中文标题生成的知识页文件名可直接使用中文 |
 | 知识库浏览 | 已完成 | 支持来源树、知识分类、编辑、Markdown 预览、下载 |
@@ -117,7 +117,7 @@
 | Deep Research | 未完成 | 联网研究工作流尚未迁移 |
 | 图片 OCR / 多模态 | 未完成 | 图片理解与 OCR 还未接入 |
 | Embedding 真正接入检索 | 未完成 | 设置项已预留，但主链路未启用向量检索 |
-| 老式 `.doc` 支持 | 未完成 | 当前仅支持 `.docx`，不支持 `.doc` |
+| 老式 `.doc` 支持 | 已完成 | `.doc` 会和 `.docx` 一样参与提取、缓存、预览和检索 |
 
 ## 技术栈
 
@@ -309,13 +309,14 @@ docker compose up --build
 - `.txt`
 - `.csv`
 - `.pdf`
+- `.doc`
 - `.docx`
 - `.xlsx`
 - `.pptx`
 
 说明：
 
-- `pdf/docx/xlsx/pptx` 提取后的文本会缓存到项目内部
+- `pdf/doc/docx/xlsx/pptx` 提取后的文本会缓存到项目内部
 - 问答和检索会复用这些缓存文本
 - 如果来源文件已有缓存文本，预览时也会优先显示缓存内容
 

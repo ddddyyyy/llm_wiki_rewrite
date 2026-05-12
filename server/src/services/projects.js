@@ -13,6 +13,7 @@ import {
 
 const SUPPORTED_SOURCE_EXTENSIONS = new Set([
   ".pdf",
+  ".doc",
   ".docx",
   ".xlsx",
   ".pptx",

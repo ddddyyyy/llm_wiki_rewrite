@@ -28,8 +28,8 @@ export function createIngestService({
 }) {
   const { ensureInsideProject, collectFiles, exists } = projectFs
   const { readProjectFile, writeProjectFile } = projectService
-  const isSupportedSource = (fileName) => /\.(md|txt|markdown|pdf|docx|pptx|xlsx|csv)$/i.test(fileName)
-  const needsPersistedExtractedText = (fileName) => /\.(pdf|docx|pptx|xlsx)$/i.test(fileName)
+  const isSupportedSource = (fileName) => /\.(md|txt|markdown|pdf|doc|docx|pptx|xlsx|csv)$/i.test(fileName)
+  const needsPersistedExtractedText = (fileName) => /\.(pdf|doc|docx|pptx|xlsx)$/i.test(fileName)
   const MAX_EXISTING_PAGE_SNIPPET_CHARS = 2500
   const MAX_EXISTING_PAGES_CONTEXT_CHARS = 10000
   const MAX_EXISTING_PAGES = 4

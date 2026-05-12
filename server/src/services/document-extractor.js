@@ -1,7 +1,9 @@
 import { readFile } from "node:fs/promises"
 import JSZip from "jszip"
+import WordExtractor from "word-extractor"
 
 let pdfJsModulePromise = null
+let wordExtractorInstance = null
 
 function cleanText(value = "") {
   const text = String(value || "").replace(/\r/g, "")
@@ -149,6 +151,22 @@ async function readDocx(filePath) {
   return blocks.join("\n\n")
 }
 
+async function readDoc(filePath) {
+  if (!wordExtractorInstance) {
+    wordExtractorInstance = new WordExtractor()
+  }
+  const document = await wordExtractorInstance.extract(filePath)
+  const sections = [
+    document.getHeaders?.({ includeFooters: false }) || "",
+    document.getBody?.() || "",
+    document.getFootnotes?.() || "",
+    document.getEndnotes?.() || "",
+    document.getAnnotations?.() || "",
+    document.getTextboxes?.() || "",
+  ]
+  return cleanText(sections.filter(Boolean).join("\n\n"))
+}
+
 async function readPptx(filePath) {
   const zip = await openZip(filePath)
   const slideNames = Object.keys(zip.files)
@@ -271,6 +289,8 @@ export function createDocumentExtractor() {
 
     if (suffix === ".pdf") {
       text = await readPdf(filePath)
+    } else if (suffix === ".doc") {
+      text = await readDoc(filePath)
     } else if (suffix === ".docx") {
       text = await readDocx(filePath)
     } else if (suffix === ".xlsx") {

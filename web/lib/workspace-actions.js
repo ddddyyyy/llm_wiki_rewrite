@@ -24,6 +24,7 @@ export function createWorkspaceActions(deps) {
   const PREVIEWABLE_TEXT_EXTENSIONS = new Set(["md", "markdown", "txt", "csv"])
   const SUPPORTED_SOURCE_EXTENSIONS = new Set([
     "pdf",
+    "doc",
     "docx",
     "xlsx",
     "pptx",

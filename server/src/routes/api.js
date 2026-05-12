@@ -63,7 +63,7 @@ export function createApiHandler(services) {
       const relativePath = url.searchParams.get("path") || ""
       if (
         relativePath.startsWith("raw/sources/")
-        && /\.(pdf|docx|pptx|xlsx)$/i.test(relativePath)
+        && /\.(pdf|doc|docx|pptx|xlsx)$/i.test(relativePath)
       ) {
         const cached = await sourceTextCacheService.ensureCachedText(projectId, relativePath)
         if (cached?.text?.trim()) {
@@ -98,6 +98,7 @@ export function createApiHandler(services) {
       const ext = filename.includes(".") ? filename.split(".").pop().toLowerCase() : ""
       const contentTypes = {
         pdf: "application/pdf",
+        doc: "application/msword",
         docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
