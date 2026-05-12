@@ -1,4 +1,5 @@
 import {
+  formatDate,
   outputLanguageInstruction,
   resolveOutputLanguage,
   stripMarkdownExtension,
@@ -39,6 +40,62 @@ export function createIngestService({
       readProjectFile(projectId, "wiki/overview.md").then((item) => item.contents).catch(() => ""),
     ])
     return { schema, purpose, index, overview }
+  }
+
+  function buildFallbackSourcePage({ file, sourcePath, raw, analysis, outputLanguage }) {
+    const isEnglish = outputLanguage === "English"
+    const title = titleFromFileName(file.path)
+    const created = formatDate()
+    const analysisSummary = String(analysis || "").trim().slice(0, 3200)
+    const sourceExcerpt = String(raw || "").trim().slice(0, 1800)
+    const sections = isEnglish
+      ? [
+          `---`,
+          `type: source`,
+          `title: ${title}`,
+          `created: ${created}`,
+          `updated: ${created}`,
+          `tags: ["source-summary", "fallback-generated"]`,
+          `related: []`,
+          `sources: ["${file.name}"]`,
+          `source_path: "${sourcePath}"`,
+          `---`,
+          ``,
+          `# ${title}`,
+          ``,
+          `## Summary`,
+          ``,
+          analysisSummary || "The source was re-ingested through a fallback path because the model did not return a valid source-summary file block. This page preserves the most important extracted analysis and a raw excerpt for reference.",
+          ``,
+          `## Source Excerpt`,
+          ``,
+          sourceExcerpt || "_No extractable source excerpt was available._",
+          ``,
+        ]
+      : [
+          `---`,
+          `type: source`,
+          `title: ${title}`,
+          `created: ${created}`,
+          `updated: ${created}`,
+          `tags: ["source-summary", "fallback-generated"]`,
+          `related: []`,
+          `sources: ["${file.name}"]`,
+          `source_path: "${sourcePath}"`,
+          `---`,
+          ``,
+          `# ${title}`,
+          ``,
+          `## 摘要`,
+          ``,
+          analysisSummary || "本次来源提取进入了保底路径，因为模型没有返回有效的来源摘要 FILE block。这里先保留最重要的分析结果和原文摘录，避免知识页完全缺失。",
+          ``,
+          `## 原文摘录`,
+          ``,
+          sourceExcerpt || "_没有可用的原文摘录。_",
+          ``,
+        ]
+    return sections.join("\n")
   }
 
   function normalizeForMatch(value) {
@@ -239,8 +296,19 @@ export function createIngestService({
 
     const { blocks, warnings } = parseFileBlocks(generation)
     const reviewItems = parseReviewBlocks(generation, sourcePath)
+    const hasSourceSummaryBlock = blocks.some((block) => block.path === wikiRelative)
     if (blocks.length === 0) {
-      throw new Error(`Generation produced no valid FILE blocks for ${sourcePath}`)
+      warnings.push(`模型未返回有效 FILE blocks，已为 ${sourcePath} 生成保底来源摘要页。`)
+      blocks.push({
+        path: wikiRelative,
+        content: buildFallbackSourcePage({ file, sourcePath, raw, analysis, outputLanguage }),
+      })
+    } else if (!hasSourceSummaryBlock) {
+      warnings.push(`模型未返回 ${wikiRelative}，已补写保底来源摘要页。`)
+      blocks.push({
+        path: wikiRelative,
+        content: buildFallbackSourcePage({ file, sourcePath, raw, analysis, outputLanguage }),
+      })
     }
     const wroteIndex = blocks.some((block) => block.path === "wiki/index.md")
     const written = []
