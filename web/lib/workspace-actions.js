@@ -270,6 +270,15 @@ export function createWorkspaceActions(deps) {
     state.tasks = (await api.loadTasks(state.selectedProjectId)).tasks
     const hadRunning = previous.some((task) => task.status === "running" || task.status === "queued")
     const hasRunning = state.tasks.some((task) => task.status === "running" || task.status === "queued")
+    if (hasRunning && state.activeView === "sources") {
+      const [knowledgeResponse, treeResponse] = await Promise.all([
+        api.loadKnowledge(state.selectedProjectId),
+        api.loadTree(state.selectedProjectId),
+      ])
+      state.knowledge = knowledgeResponse
+      state.treeNodes = treeResponse.tree
+      applyDefaultTreeExpansion(treeResponse.tree)
+    }
     if (!hasRunning) {
       await loadKnowledge()
       await loadImportHistory()
