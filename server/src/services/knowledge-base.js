@@ -1,8 +1,5 @@
 import {
-  buildLanguageReminder,
-  detectPrimaryLanguage,
   isGreeting,
-  outputLanguageInstruction,
   readFrontmatterValue,
   resolveOutputLanguage,
   titleFromFileName,
@@ -19,7 +16,7 @@ import {
   parseCitedPageNumbers,
   stripCitationComment,
 } from "../lib/chat-context.js"
-import { buildChatAnswerStyle } from "../lib/chat-answer-style.js"
+import { buildChatSystemPrompt, buildChatUserPrompt, buildGreetingPrompt } from "../prompts/chat.js"
 
 export function createKnowledgeBaseService({
   projectFs,
@@ -156,13 +153,7 @@ export function createKnowledgeBaseService({
         llmMessages: [
           {
             role: "system",
-            content: [
-              `You are a wiki assistant for the project "${projectId}".`,
-              "The user sent a casual greeting - reply briefly and naturally, in one or two sentences.",
-              "Do NOT invent wiki content or pretend to have retrieved pages. Invite the user to ask a concrete question if they want information from the wiki.",
-              "",
-              `Respond in ${responseLanguage}.`,
-            ].join("\n"),
+            content: buildGreetingPrompt(projectId, responseLanguage),
           },
           ...historyMessages,
           {
@@ -199,68 +190,20 @@ export function createKnowledgeBaseService({
       readProjectFile,
       readChatContextFile,
     })
-    const isEnglish = responseLanguage === "English"
     const systemMessage = {
       role: "system",
-      content: [
-        "You are a knowledgeable wiki assistant. Answer questions based on the wiki content and source excerpts provided below.",
-        "",
-        "## Rules",
-        "- Answer based ONLY on the numbered wiki pages and source excerpts provided below.",
-        "- Your PRIMARY job is to answer the user's actual question, not merely list related topics or summarize pages.",
-        "- Start with a direct answer or conclusion whenever the pages support one.",
-        "- Then explain the reasoning using the retrieved wiki knowledge, and distinguish clearly between confirmed facts, inferred conclusions, and open gaps.",
-        "- If the provided pages don't contain enough information, say so honestly.",
-        "- If the question asks for judgment, recommendation, comparison, next step, or implication, synthesize the pages into a concrete answer instead of only enumerating source contents.",
-        "- If the pages only partially answer the question, first answer the part that is supported, then briefly state what is still missing.",
-        "- Use [[wikilink]] syntax to reference wiki pages.",
-        "- When citing information, use the page number in brackets, e.g. [1], [2].",
-        "- At the VERY END of your response, add a hidden comment listing which page numbers you used:",
-        "  <!-- cited: 1, 3, 5 -->",
-        "",
-        "## Preferred Response Style",
-        "- First paragraph: answer the question directly.",
-        "- Then provide the supporting reasoning or evidence from the wiki pages.",
-        "- Do not turn the whole answer into a generic catalog of concepts unless the user explicitly asked for a catalog.",
-        "- Keep the answer grounded in the project context and the user's wording.",
-        "",
-        buildChatAnswerStyle(query, responseLanguage),
-        "",
-        "Use markdown formatting for clarity.",
-        "",
-        chatContext.purpose ? `## Wiki Purpose\n${chatContext.purpose}` : "",
-        chatContext.trimmedIndex ? `## Wiki Index\n${chatContext.trimmedIndex}` : "",
-        chatContext.selectedPages.length > 0 ? `## Page List\n${chatContext.pageList}` : "",
-        `## Wiki Pages\n\n${chatContext.pagesContext}`,
-        "",
-        "---",
-        "",
-        `## ⚠️ MANDATORY OUTPUT LANGUAGE: ${responseLanguage}`,
-        "",
-        `You MUST write your entire response in **${responseLanguage}**.`,
-        "The wiki content above may be in a different language, but this is IRRELEVANT to your output language.",
-        `Ignore the language of the wiki content. Write in ${responseLanguage} only.`,
-        `Even proper nouns should use standard ${responseLanguage} transliteration when appropriate.`,
-        "DO NOT use any other language. This overrides all other instructions.",
-        "",
-        isEnglish
-          ? "Prefer wiki knowledge pages when they directly answer the question, but use raw source excerpts when they add important details, evidence, or wording not yet summarized in the wiki."
-          : "当 wiki 知识页已经能直接回答问题时优先依据 wiki 知识页；如果原始来源摘录里有更具体的细节、证据或尚未写入 wiki 的信息，也应结合这些摘录回答。",
-      ].filter(Boolean).join("\n"),
+      content: buildChatSystemPrompt({
+        projectId,
+        query,
+        responseLanguage,
+        chatContext,
+      }),
     }
-    const languageReminder = buildLanguageReminder(query, settings)
     const llmMessages = [systemMessage, ...historyMessages]
-    if (historyMessages.length > 0) {
-      llmMessages.push({
-        role: "user",
-        content: `[${languageReminder}]\n\nQuestion:\n${query}`,
-      })
-    } else {
-      llmMessages.push({
-        role: "user",
-        content: `Question:\n${query}`,
-      })
-    }
+    llmMessages.push({
+      role: "user",
+      content: buildChatUserPrompt(query, settings, historyMessages.length > 0),
+    })
     return {
       settings,
       query,
