@@ -60,7 +60,7 @@ export function buildAnalysisPrompt({ schema, purpose, index, overview, sourcePa
   ].join("\n")
 }
 
-export function buildGenerationPrompt({ schema, purpose, index, overview, sourcePath, sourceContent, targetLanguage, folderContext }) {
+export function buildGenerationPrompt({ schema, purpose, index, overview, sourcePath, sourceContent, targetLanguage, folderContext, existingPagesContext = "" }) {
   const language = normalizePromptLanguage(targetLanguage)
   const sourceFileName = path.basename(sourcePath)
   const sourceBaseName = sourceFileName.replace(/\.[^.]+$/, "")
@@ -147,6 +147,7 @@ export function buildGenerationPrompt({ schema, purpose, index, overview, source
     folderContext ? `${pickPromptText(language, "## Folder Context", "## 目录上下文")}\n${folderContext}` : "",
     index ? `${pickPromptText(language, "## Current Wiki Index (preserve all existing entries, add new ones)", "## 当前 Wiki 索引（保留所有已有条目，并在相应分类中加入新条目）")}\n${index}` : "",
     overview ? `${pickPromptText(language, "## Current Overview (update this to reflect the new source)", "## 当前 Overview（需要更新以反映新来源）")}\n${overview}` : "",
+    existingPagesContext ? `${pickPromptText(language, "## Relevant Existing Wiki Pages", "## 相关的现有 Wiki 页面")}\n${existingPagesContext}` : "",
     "",
     pickPromptText(language, "## Original Source Content", "## 原始来源内容"),
     sourceContent,

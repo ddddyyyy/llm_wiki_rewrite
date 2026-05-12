@@ -1,9 +1,11 @@
 import {
+  outputLanguageInstruction,
   resolveOutputLanguage,
+  stripMarkdownExtension,
   slugifyFileStem,
   titleFromFileName,
 } from "../lib/text.js"
-import { parseFileBlocks } from "../lib/knowledge.js"
+import { parseFileBlocks, stripFrontmatter } from "../lib/knowledge.js"
 import { mergePageContent } from "../lib/page-merge.js"
 import { parseReviewBlocks } from "../lib/review-blocks.js"
 import { buildAnalysisPrompt, buildGenerationPrompt } from "../prompts/ingest.js"
@@ -25,6 +27,9 @@ export function createIngestService({
   const { readProjectFile, writeProjectFile } = projectService
   const isSupportedSource = (fileName) => /\.(md|txt|markdown|pdf|docx|pptx|xlsx|csv)$/i.test(fileName)
   const needsPersistedExtractedText = (fileName) => /\.(pdf|docx|pptx|xlsx)$/i.test(fileName)
+  const MAX_EXISTING_PAGE_SNIPPET_CHARS = 2500
+  const MAX_EXISTING_PAGES_CONTEXT_CHARS = 10000
+  const MAX_EXISTING_PAGES = 4
 
   async function loadProjectContext(projectId) {
     const [schema, purpose, index, overview] = await Promise.all([
@@ -34,6 +39,73 @@ export function createIngestService({
       readProjectFile(projectId, "wiki/overview.md").then((item) => item.contents).catch(() => ""),
     ])
     return { schema, purpose, index, overview }
+  }
+
+  function normalizeForMatch(value) {
+    return String(value || "").toLowerCase()
+  }
+
+  function extractLookupTerms(text) {
+    const normalized = String(text || "")
+    const matches = normalized.match(/[\p{Script=Han}]{2,}|[A-Za-z][A-Za-z0-9_-]{2,}/gu) || []
+    return [...new Set(matches.map((item) => item.trim().toLowerCase()).filter((item) => item.length >= 2))].slice(0, 48)
+  }
+
+  async function buildExistingPagesContext(projectId, sourcePath, fileName, analysis, raw) {
+    const wikiRoot = ensureInsideProject(projectId, "wiki").fullPath
+    const wikiFiles = await collectFiles(wikiRoot)
+    const fileStem = stripMarkdownExtension(fileName).toLowerCase()
+    const lookupTerms = new Set([
+      ...extractLookupTerms(analysis),
+      ...extractLookupTerms(fileName),
+      ...extractLookupTerms(raw.slice(0, 4000)),
+    ])
+    const candidates = []
+
+    for (const file of wikiFiles) {
+      if (!file.path.endsWith(".md")) continue
+      if (["index.md", "overview.md", "log.md"].includes(file.path)) continue
+      const wikiPath = `wiki/${file.path}`
+      const { contents } = await readProjectFile(projectId, wikiPath)
+      const title = titleFromFileName(file.path)
+      const body = stripFrontmatter(contents)
+      const haystack = normalizeForMatch(`${file.path}\n${title}\n${body.slice(0, 3000)}`)
+      let score = 0
+      const slug = stripMarkdownExtension(file.name).toLowerCase()
+      if (slug && analysis.toLowerCase().includes(slug)) score += 6
+      if (title && analysis.toLowerCase().includes(title.toLowerCase())) score += 8
+      if (fileStem && slug === fileStem) score += 4
+      for (const term of lookupTerms) {
+        if (!term) continue
+        if (title.toLowerCase().includes(term)) score += 3
+        else if (haystack.includes(term)) score += 1
+      }
+      if (contents.includes(`source_path: "${sourcePath}"`) || contents.includes(`source_path: ${sourcePath}`)) {
+        score += 5
+      }
+      if (score <= 0) continue
+      candidates.push({
+        path: wikiPath,
+        title,
+        score,
+        content: contents,
+      })
+    }
+
+    candidates.sort((a, b) => b.score - a.score || a.path.localeCompare(b.path))
+    const selected = []
+    let totalChars = 0
+    for (const candidate of candidates) {
+      if (selected.length >= MAX_EXISTING_PAGES) break
+      const snippet = candidate.content.slice(0, MAX_EXISTING_PAGE_SNIPPET_CHARS).trim()
+      if (!snippet) continue
+      const block = `---EXISTING PAGE: ${candidate.path}---\n${snippet}\n---END EXISTING PAGE---`
+      if (totalChars + block.length > MAX_EXISTING_PAGES_CONTEXT_CHARS && selected.length > 0) break
+      selected.push(block)
+      totalChars += block.length
+    }
+
+    return selected.join("\n\n")
   }
 
   async function ingestSourceFile(projectId, file, projectContext, settings, onProgress = () => {}, options = {}) {
@@ -112,6 +184,7 @@ export function createIngestService({
     ])
 
     onProgress({ stage: "generating", message: `正在为 ${file.path} 生成知识页...`, file: file.path })
+    const existingPagesContext = await buildExistingPagesContext(projectId, sourcePath, file.name, analysis, raw)
     const generation = await callChatModel(settings, [
       {
         role: "system",
@@ -124,6 +197,7 @@ export function createIngestService({
           sourceContent: truncatedSource,
           targetLanguage: promptLanguage,
           folderContext,
+          existingPagesContext,
         }),
       },
       {
