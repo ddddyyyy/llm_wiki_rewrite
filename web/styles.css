@@ -1173,6 +1173,73 @@ textarea {
   color: #b44e4e;
 }
 
+.primary-button {
+  min-height: 40px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #d9bb7a 0%, #c48d67 100%);
+  color: #fffaf2;
+}
+
+.modal-root {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(36, 50, 68, 0.24);
+  backdrop-filter: blur(6px);
+}
+
+.modal-card {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 460px);
+  display: grid;
+  gap: 16px;
+  padding: 20px;
+  border-radius: 14px;
+  border: 1px solid rgba(59, 74, 96, 0.1);
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 22px 60px rgba(30, 40, 54, 0.18);
+}
+
+.modal-card-header {
+  display: grid;
+  gap: 6px;
+}
+
+.modal-card-header h2 {
+  margin: 0;
+  font-size: 1.08rem;
+}
+
+.modal-card-body {
+  display: grid;
+  gap: 10px;
+  color: rgba(36, 50, 68, 0.8);
+  line-height: 1.6;
+}
+
+.modal-card-body p {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.modal-card-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
 .editor-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);

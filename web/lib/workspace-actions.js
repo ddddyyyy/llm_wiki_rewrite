@@ -4,6 +4,7 @@ export function createWorkspaceActions(deps) {
     state,
     els,
     setStatus,
+    confirmAction,
     updateEditor,
     updateUploadState,
     renderProjectsPanel,
@@ -346,7 +347,12 @@ export function createWorkspaceActions(deps) {
 
   async function deleteConversation(conversation) {
     if (!state.selectedProjectId || !conversation?.id) return
-    const confirmed = window.confirm(`确认删除对话“${conversation.title || conversation.id}”吗？`)
+    const confirmed = await confirmAction({
+      title: "删除对话",
+      body: `确认删除对话“${conversation.title || conversation.id}”吗？\n删除后将无法恢复这段聊天记录。`,
+      confirmLabel: "删除",
+      danger: true,
+    })
     if (!confirmed) return
     await api.deleteConversation(state.selectedProjectId, conversation.id)
     state.conversations = state.conversations.filter((item) => item.id !== conversation.id)
@@ -566,7 +572,12 @@ export function createWorkspaceActions(deps) {
 
   async function deleteSource(relativePath) {
     if (!state.selectedProjectId) return
-    const confirmed = window.confirm(`确认删除来源文件或目录？\n${relativePath}\n\n关联的知识页也会一并清理。`)
+    const confirmed = await confirmAction({
+      title: "删除来源",
+      body: `确认删除来源文件或目录？\n${relativePath}\n\n关联的知识页也会一并清理。`,
+      confirmLabel: "删除",
+      danger: true,
+    })
     if (!confirmed) return
     setStatus(`正在删除 ${relativePath}...`)
     const response = await api.deleteSource(state.selectedProjectId, relativePath)
@@ -630,7 +641,12 @@ export function createWorkspaceActions(deps) {
 
   async function deleteProject(project) {
     if (!project?.id) return
-    const confirmed = window.confirm(`确认删除项目“${project.name || project.id}”吗？\n\n这会删除该项目下的所有本地文件，且无法恢复。`)
+    const confirmed = await confirmAction({
+      title: "删除项目",
+      body: `确认删除项目“${project.name || project.id}”吗？\n\n这会删除该项目下的所有本地文件，且无法恢复。`,
+      confirmLabel: "删除项目",
+      danger: true,
+    })
     if (!confirmed) return
     setStatus(`正在删除项目：${project.name || project.id}...`)
     await api.deleteProject(project.id)
@@ -812,7 +828,12 @@ export function createWorkspaceActions(deps) {
 
   async function removePendingSource(relativePath) {
     if (!state.selectedProjectId || !relativePath) return
-    const confirmed = window.confirm(`确认移除待处理来源文件“${relativePath}”吗？`)
+    const confirmed = await confirmAction({
+      title: "移除待处理来源",
+      body: `确认移除待处理来源文件“${relativePath}”吗？`,
+      confirmLabel: "移除",
+      danger: true,
+    })
     if (!confirmed) return
     await api.deleteSource(state.selectedProjectId, relativePath)
     await refreshProjects()
@@ -833,7 +854,12 @@ export function createWorkspaceActions(deps) {
       setStatus("这一批没有待处理文件了。")
       return
     }
-    const confirmed = window.confirm(`确认取消这一批中的 ${pendingPaths.length} 个待处理文件吗？`)
+    const confirmed = await confirmAction({
+      title: "取消本批待处理",
+      body: `确认取消这一批中的 ${pendingPaths.length} 个待处理文件吗？`,
+      confirmLabel: "取消本批",
+      danger: true,
+    })
     if (!confirmed) return
     for (const sourcePath of pendingPaths) {
       await api.deleteSource(state.selectedProjectId, sourcePath)

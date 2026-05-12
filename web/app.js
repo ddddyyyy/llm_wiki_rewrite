@@ -56,6 +56,14 @@ const state = {
   tasks: [],
   taskPollTimer: null,
   expandedTreePaths: new Set(),
+  modal: {
+    open: false,
+    title: "",
+    body: "",
+    confirmLabel: "确认",
+    danger: false,
+    resolver: null,
+  },
 }
 
 const api = createApiClient()
@@ -166,10 +174,77 @@ const els = {
   chatInput: document.querySelector("#chat-input"),
   chatSendButton: document.querySelector("#chat-send-button"),
   statusBar: document.querySelector("#status-bar"),
+  modalRoot: document.querySelector("#modal-root"),
+  modalBackdrop: document.querySelector("#modal-backdrop"),
+  confirmModal: document.querySelector("#confirm-modal"),
+  confirmModalTitle: document.querySelector("#confirm-modal-title"),
+  confirmModalBody: document.querySelector("#confirm-modal-body"),
+  confirmModalCancel: document.querySelector("#confirm-modal-cancel"),
+  confirmModalConfirm: document.querySelector("#confirm-modal-confirm"),
 }
 
 function setStatus(message) {
   els.statusBar.textContent = message
+}
+
+function escapeHtml(value) {
+  return String(value || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;")
+}
+
+function closeConfirmModal(result = false) {
+  if (typeof state.modal.resolver === "function") {
+    const resolver = state.modal.resolver
+    state.modal.resolver = null
+    resolver(result)
+  }
+  state.modal.open = false
+  state.modal.title = ""
+  state.modal.body = ""
+  state.modal.confirmLabel = "确认"
+  state.modal.danger = false
+  renderConfirmModal()
+}
+
+function renderConfirmModal() {
+  els.modalRoot.hidden = !state.modal.open
+  els.confirmModalTitle.textContent = state.modal.title || "确认操作"
+  els.confirmModalBody.innerHTML = String(state.modal.body || "")
+    .split("\n")
+    .filter(Boolean)
+    .map((line) => `<p>${escapeHtml(line)}</p>`)
+    .join("")
+    || "<p>请确认是否继续。</p>"
+  els.confirmModalConfirm.textContent = state.modal.confirmLabel || "确认"
+  els.confirmModalConfirm.classList.toggle("danger-button", Boolean(state.modal.danger))
+  els.confirmModalConfirm.classList.toggle("primary-button", !state.modal.danger)
+  if (state.modal.open) {
+    queueMicrotask(() => els.confirmModalConfirm.focus())
+  }
+}
+
+function confirmAction({
+  title = "确认操作",
+  body = "",
+  confirmLabel = "确认",
+  danger = false,
+} = {}) {
+  if (state.modal.open) {
+    closeConfirmModal(false)
+  }
+  state.modal.open = true
+  state.modal.title = title
+  state.modal.body = body
+  state.modal.confirmLabel = confirmLabel
+  state.modal.danger = danger
+  renderConfirmModal()
+  return new Promise((resolve) => {
+    state.modal.resolver = resolve
+  })
 }
 
 function isMarkdownPath(filePath) {
@@ -460,6 +535,7 @@ workspaceActions = createWorkspaceActions({
   state,
   els,
   setStatus,
+  confirmAction,
   updateEditor,
   updateUploadState,
   renderProjectsPanel,
@@ -502,6 +578,15 @@ els.chatInput.addEventListener("keydown", (event) => {
   }
 })
 els.saveSettingsButton.addEventListener("click", () => void workspaceActions.saveSettings())
+els.confirmModalCancel.addEventListener("click", () => closeConfirmModal(false))
+els.confirmModalConfirm.addEventListener("click", () => closeConfirmModal(true))
+els.modalBackdrop.addEventListener("click", () => closeConfirmModal(false))
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && state.modal.open) {
+    event.preventDefault()
+    closeConfirmModal(false)
+  }
+})
 els.graphTypeFilter.addEventListener("change", () => {
   state.graphTypeFilter = els.graphTypeFilter.value
   renderGraphPanel()

@@ -438,6 +438,28 @@
       <footer id="status-bar" class="status-bar">已就绪</footer>
     </div>
 
+    <div id="modal-root" class="modal-root" hidden>
+      <div id="modal-backdrop" class="modal-backdrop"></div>
+      <section
+        id="confirm-modal"
+        class="modal-card"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="confirm-modal-title"
+        aria-describedby="confirm-modal-body"
+      >
+        <div class="modal-card-header">
+          <p class="eyebrow">请确认</p>
+          <h2 id="confirm-modal-title">确认操作</h2>
+        </div>
+        <div id="confirm-modal-body" class="modal-card-body"></div>
+        <div class="modal-card-actions">
+          <button id="confirm-modal-cancel" type="button" class="secondary-button">取消</button>
+          <button id="confirm-modal-confirm" type="button" class="danger-button">确认</button>
+        </div>
+      </section>
+    </div>
+
     <script type="module" src="/app.js"></script>
   </body>
 </html>
