@@ -17,6 +17,9 @@ export function buildAnalysisPrompt({ schema, purpose, index, overview, sourcePa
     targetLanguage === "en" ? "- Name and type" : "- 名称与类型",
     targetLanguage === "en" ? "- Role in the source (central vs. peripheral)" : "- 在来源中的角色（核心还是次要）",
     targetLanguage === "en" ? "- Whether it likely already exists in the wiki (check the index)" : "- 是否很可能已经存在于 wiki 中（结合 index 判断）",
+    targetLanguage === "en"
+      ? "- If it likely already exists, name the most likely existing wiki page / slug that should be updated"
+      : "- 如果它很可能已存在，请指出最可能应该复用或更新的现有 wiki 页面 / slug",
     "",
     "## Key Concepts",
     targetLanguage === "en"
@@ -25,6 +28,9 @@ export function buildAnalysisPrompt({ schema, purpose, index, overview, sourcePa
     targetLanguage === "en" ? "- Name and brief definition" : "- 名称与简短定义",
     targetLanguage === "en" ? "- Why it matters in this source" : "- 它在本来源中的重要性",
     targetLanguage === "en" ? "- Whether it likely already exists in the wiki" : "- 是否很可能已经存在于 wiki 中",
+    targetLanguage === "en"
+      ? "- If it likely already exists, name the most likely existing wiki page / slug that should be updated"
+      : "- 如果它很可能已存在，请指出最可能应该复用或更新的现有 wiki 页面 / slug",
     "",
     "## Main Arguments & Findings",
     targetLanguage === "en" ? "- What are the core claims or results?" : "- 核心论点或结论是什么？",
@@ -120,11 +126,14 @@ export function buildGenerationPrompt({ schema, purpose, index, overview, source
     "- 如果页面标题主要是英文或混合英文术语，可以继续使用 kebab-case 文件名",
     "- Follow the analysis recommendations on what to emphasize",
     "- If the analysis found connections to existing pages, add cross-references",
+    "- Reuse the exact existing wiki slug/path when the analysis indicates an entity or concept already exists; update that page instead of inventing a near-duplicate filename",
+    "- If the index suggests two names refer to the same entity or concept, prefer updating the best matching existing page and add aliases/cross-links in the body rather than creating another sibling page",
+    "- Only create a brand-new entity or concept page when the topic is genuinely distinct, not merely a paraphrase, abbreviation variant, or translation variant of an existing page",
     "- Do not write outside wiki/",
     "- Prefer high recall for materially important entities and concepts: if an entity or concept is central to understanding the source, create or update a dedicated page instead of only mentioning it in the source summary",
     "- Do not collapse multiple important entities or concepts into a single source summary page when they deserve their own pages",
     "- Create entity/concept pages for items that are central, repeatedly referenced, define the source's scope, or are necessary for answering likely downstream questions",
-    "- If an entity or concept already likely exists, update or cross-link it when the source adds meaningful detail rather than silently omitting it",
+    "- If an entity or concept already likely exists, prefer updating that existing page with new detail; do not silently omit the new information, and do not create a duplicate page unless the distinction is explicit and material",
     "- It is acceptable to generate several entity and concept pages from one source when the source is dense and conceptually rich",
     "- The source summary page must preserve concrete facts, scope, caveats, and the most important supporting details from the original source",
     "- wiki/index.md must remain a usable navigation index, not just a dump of titles",
