@@ -1,6 +1,8 @@
 import {
+  detectPrimaryLanguage,
   formatDate,
   outputLanguageInstruction,
+  readFrontmatterValue,
   resolveOutputLanguage,
   stripMarkdownExtension,
   slugifyFileStem,
@@ -31,6 +33,15 @@ export function createIngestService({
   const MAX_EXISTING_PAGE_SNIPPET_CHARS = 2500
   const MAX_EXISTING_PAGES_CONTEXT_CHARS = 10000
   const MAX_EXISTING_PAGES = 4
+  const MIN_BODY_CHARS = {
+    source: 120,
+    entity: 80,
+    concept: 80,
+    query: 60,
+    comparison: 80,
+    synthesis: 100,
+    overview: 80,
+  }
 
   async function loadProjectContext(projectId) {
     const [schema, purpose, index, overview] = await Promise.all([
@@ -96,6 +107,46 @@ export function createIngestService({
           ``,
         ]
     return sections.join("\n")
+  }
+
+  function expectedPageType(relativePath) {
+    if (relativePath.startsWith("wiki/sources/")) return "source"
+    if (relativePath.startsWith("wiki/entities/")) return "entity"
+    if (relativePath.startsWith("wiki/concepts/")) return "concept"
+    if (relativePath.startsWith("wiki/queries/")) return "query"
+    if (relativePath.startsWith("wiki/comparisons/")) return "comparison"
+    if (relativePath.startsWith("wiki/synthesis/")) return "synthesis"
+    if (relativePath === "wiki/overview.md") return "overview"
+    return ""
+  }
+
+  function validateGeneratedBlock(relativePath, content, outputLanguage) {
+    const expectedType = expectedPageType(relativePath)
+    if (!String(content || "").startsWith("---")) {
+      return { ok: false, reason: `页面 ${relativePath} 缺少 YAML frontmatter，已跳过。` }
+    }
+    const type = readFrontmatterValue(content, "type")
+    const title = readFrontmatterValue(content, "title")
+    const created = readFrontmatterValue(content, "created")
+    const updated = readFrontmatterValue(content, "updated")
+    const body = stripFrontmatter(content).trim()
+
+    if (!type) return { ok: false, reason: `页面 ${relativePath} 缺少 type 字段，已跳过。` }
+    if (!title) return { ok: false, reason: `页面 ${relativePath} 缺少 title 字段，已跳过。` }
+    if (!created || !updated) {
+      return { ok: false, reason: `页面 ${relativePath} 缺少 created/updated 字段，已跳过。` }
+    }
+    if (expectedType && type !== expectedType) {
+      return { ok: false, reason: `页面 ${relativePath} 的 type=${type} 与路径不匹配（应为 ${expectedType}），已跳过。` }
+    }
+    const minBodyChars = MIN_BODY_CHARS[type] || 60
+    if (body.length < minBodyChars) {
+      return { ok: false, reason: `页面 ${relativePath} 正文过短（${body.length} 字符），已跳过。` }
+    }
+    if (outputLanguage === "English" && body.length >= 160 && detectPrimaryLanguage(body) !== "en") {
+      return { ok: false, reason: `页面 ${relativePath} 的正文语言与目标英文输出不一致，已跳过。` }
+    }
+    return { ok: true }
   }
 
   function normalizeForMatch(value) {
@@ -296,37 +347,56 @@ export function createIngestService({
 
     const { blocks, warnings } = parseFileBlocks(generation)
     const reviewItems = parseReviewBlocks(generation, sourcePath)
-    const hasSourceSummaryBlock = blocks.some((block) => block.path === wikiRelative)
-    if (blocks.length === 0) {
+    const validBlocks = []
+    for (const block of blocks) {
+      const validation = validateGeneratedBlock(block.path, block.content, outputLanguage)
+      if (!validation.ok) {
+        warnings.push(validation.reason)
+        continue
+      }
+      validBlocks.push(block)
+    }
+    const hasSourceSummaryBlock = validBlocks.some((block) => block.path === wikiRelative)
+    if (validBlocks.length === 0) {
       warnings.push(`模型未返回有效 FILE blocks，已为 ${sourcePath} 生成保底来源摘要页。`)
-      blocks.push({
+      validBlocks.push({
         path: wikiRelative,
         content: buildFallbackSourcePage({ file, sourcePath, raw, analysis, outputLanguage }),
       })
     } else if (!hasSourceSummaryBlock) {
       warnings.push(`模型未返回 ${wikiRelative}，已补写保底来源摘要页。`)
-      blocks.push({
+      validBlocks.push({
         path: wikiRelative,
         content: buildFallbackSourcePage({ file, sourcePath, raw, analysis, outputLanguage }),
       })
     }
-    const wroteIndex = blocks.some((block) => block.path === "wiki/index.md")
+    const wroteIndex = validBlocks.some((block) => block.path === "wiki/index.md")
     const written = []
-    onProgress({ stage: "writing", message: `正在写入 ${blocks.length} 个知识文件：${file.path}...`, file: file.path })
-    for (const block of blocks) {
-      const contentToWrite = await resolveWriteContent(projectId, block.path, block.content, settings, sourcePath)
-      await writeProjectFile(projectId, block.path, contentToWrite)
-      written.push(block.path)
+    const hardFailures = []
+    onProgress({ stage: "writing", message: `正在写入 ${validBlocks.length} 个知识文件：${file.path}...`, file: file.path })
+    for (const block of validBlocks) {
+      try {
+        const contentToWrite = await resolveWriteContent(projectId, block.path, block.content, settings, sourcePath)
+        await writeProjectFile(projectId, block.path, contentToWrite)
+        written.push(block.path)
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error)
+        hardFailures.push(`${block.path}: ${message}`)
+        warnings.push(`写入页面 ${block.path} 失败：${message}`)
+      }
     }
-    if (!wroteIndex) {
+    if (written.length > 0 && !wroteIndex) {
       await rebuildWikiIndex(projectId, wikiServiceDeps)
     }
-    if (written.length > 0) {
+    if (written.length > 0 && hardFailures.length === 0) {
       await ingestCacheService.saveIngestCache(projectId, sourcePath, raw, {
         filesWritten: written,
         reviewItems,
         warnings,
       })
+    }
+    if (written.length === 0) {
+      throw new Error(`未能为 ${sourcePath} 写入任何知识页`)
     }
     return {
       skipped: false,
@@ -338,6 +408,7 @@ export function createIngestService({
       written,
       analysis,
       warnings,
+      hardFailures,
       reviewItems,
     }
   }
