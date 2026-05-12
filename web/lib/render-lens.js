@@ -63,6 +63,18 @@ export function renderLens({ els, state, onOpenFile, onRunIngest, onReviewAction
       const row = document.createElement("div")
       row.className = "lens-item"
       row.innerHTML = `<strong>${escapeHtml(item.label)}</strong><span>${escapeHtml(item.path || item.expectedWikiPath || "")}</span>`
+      if (item.detail) {
+        const detail = document.createElement("p")
+        detail.className = "lens-detail"
+        detail.textContent = item.detail
+        row.appendChild(detail)
+      }
+      if (item.searchQueries?.length) {
+        const search = document.createElement("p")
+        search.className = "lens-detail lens-detail-muted"
+        search.textContent = `建议检索：${item.searchQueries.join(" | ")}`
+        row.appendChild(search)
+      }
       const actions = document.createElement("div")
       actions.className = "lens-actions"
 
@@ -92,6 +104,18 @@ export function renderLens({ els, state, onOpenFile, onRunIngest, onReviewAction
         askButton.addEventListener("click", () => {
           onAskQuestion(item.prompt || item.label)
           setStatus("已将后续问题载入问答框")
+        })
+        actions.appendChild(askButton)
+      }
+
+      if (item.kind === "ingest-review" && item.searchQueries?.length) {
+        const askButton = document.createElement("button")
+        askButton.type = "button"
+        askButton.className = "mini-button"
+        askButton.textContent = "带入问答"
+        askButton.addEventListener("click", () => {
+          onAskQuestion(item.searchQueries[0] || item.title || item.label)
+          setStatus("已将提取复核问题载入问答框")
         })
         actions.appendChild(askButton)
       }

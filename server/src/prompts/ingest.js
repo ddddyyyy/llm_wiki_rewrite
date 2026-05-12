@@ -139,6 +139,40 @@ export function buildGenerationPrompt({ schema, purpose, index, overview, source
     "- wiki/index.md must remain a usable navigation index, not just a dump of titles",
     "- wiki/overview.md should describe how the new source changes the overall project picture, not merely repeat the source summary",
     "",
+    "## Optional Review Blocks",
+    targetLanguage === "en"
+      ? "After all FILE blocks, you MAY emit REVIEW blocks for cases that need human judgment."
+      : "在所有 FILE blocks 之后，如果存在需要人工判断的情况，你可以输出 REVIEW blocks。",
+    targetLanguage === "en"
+      ? "Use REVIEW blocks when the source reveals a likely duplicate, contradiction, missing dedicated page, or a meaningful follow-up suggestion."
+      : "当来源暴露出疑似重复、冲突、缺少专门页面，或值得跟进的建议时，请使用 REVIEW blocks。",
+    targetLanguage === "en"
+      ? "Do NOT create trivial reviews. Only create them when they would help keep the wiki coherent."
+      : "不要输出琐碎的 review，只有在它们确实有助于保持 wiki 一致性时才输出。",
+    "",
+    "Allowed review types:",
+    "- contradiction",
+    "- duplicate",
+    "- missing-page",
+    "- suggestion",
+    "",
+    "REVIEW block template:",
+    "```",
+    "---REVIEW: type | Title---",
+    "Short description of the issue or suggestion.",
+    "OPTIONS: Create Page | Skip",
+    "PAGES: wiki/path/one.md, wiki/path/two.md",
+    "SEARCH: query 1 | query 2 | query 3",
+    "---END REVIEW---",
+    "```",
+    "",
+    targetLanguage === "en"
+      ? "Use the PAGES line when specific existing or proposed wiki pages are involved."
+      : "当某些现有或建议的 wiki 页面与该事项直接相关时，请填写 PAGES 行。",
+    targetLanguage === "en"
+      ? "Use the SEARCH line only for missing-page or suggestion reviews when it would help future research."
+      : "只有在 missing-page 或 suggestion 类型、且确实有助于后续研究时，才填写 SEARCH 行。",
+    "",
     purpose ? `## Wiki Purpose\n${purpose}` : "",
     schema ? `## Wiki Schema\n${schema}` : "",
     folderContext ? `## Folder Context\n${folderContext}` : "",
@@ -150,7 +184,8 @@ export function buildGenerationPrompt({ schema, purpose, index, overview, source
     "",
     "## Output Format (MUST FOLLOW EXACTLY — this is how the parser reads your response)",
     "",
-    "Your ENTIRE response consists only of FILE blocks. Nothing else.",
+    "Your ENTIRE response consists of FILE blocks, followed optionally by REVIEW blocks. Nothing else.",
+    "If REVIEW blocks are needed, place them AFTER all FILE blocks and before the response ends.",
     "",
     "FILE block template:",
     "```",
@@ -164,5 +199,6 @@ export function buildGenerationPrompt({ schema, purpose, index, overview, source
     "2. No preamble, no explanation, no markdown fences around the whole response",
     "3. No trailing commentary after the last ---END FILE---",
     "4. If you produce wiki/index.md or wiki/overview.md, output their full updated contents",
+    "5. If you emit REVIEW blocks, do not place any ordinary prose outside FILE/REVIEW blocks",
   ].join("\n")
 }

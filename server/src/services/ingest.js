@@ -7,6 +7,7 @@ import {
 } from "../lib/text.js"
 import { parseFileBlocks } from "../lib/knowledge.js"
 import { mergePageContent } from "../lib/page-merge.js"
+import { parseReviewBlocks } from "../lib/review-blocks.js"
 import { buildAnalysisPrompt, buildGenerationPrompt } from "../prompts/ingest.js"
 
 export function createIngestService({
@@ -197,6 +198,7 @@ export function createIngestService({
     ])
 
     const { blocks, warnings } = parseFileBlocks(generation)
+    const reviewItems = parseReviewBlocks(generation, sourcePath)
     if (blocks.length === 0) {
       throw new Error(`Generation produced no valid FILE blocks for ${sourcePath}`)
     }
@@ -220,6 +222,7 @@ export function createIngestService({
       written,
       analysis,
       warnings,
+      reviewItems,
     }
   }
 

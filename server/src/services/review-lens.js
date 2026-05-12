@@ -12,6 +12,20 @@ function reviewKeyForQuery(item) {
   return `query-follow-up:${item.path}`
 }
 
+function reviewKeyForIngestReview(item) {
+  return `ingest-review:${item.type}:${item.sourcePath}:${item.title}`
+}
+
+function labelForIngestReview(item) {
+  const prefixMap = {
+    contradiction: "内容冲突",
+    duplicate: "疑似重复",
+    "missing-page": "缺少页面",
+    suggestion: "后续建议",
+  }
+  return `${prefixMap[item.type] || "提取复核"}：${item.title}`
+}
+
 function formatReviewLabelFromKey(key) {
   if (typeof key !== "string" || key.length === 0) return "已处理事项"
   if (key.startsWith("missing-source-page:")) {
@@ -25,6 +39,10 @@ function formatReviewLabelFromKey(key) {
   if (key.startsWith("query-follow-up:")) {
     const target = key.slice("query-follow-up:".length)
     return `已处理后续问题：${titleFromFileName(target)}`
+  }
+  if (key.startsWith("ingest-review:")) {
+    const parts = key.split(":")
+    return `已处理提取复核：${parts.slice(3).join(":") || key}`
   }
   return key
 }
@@ -76,6 +94,7 @@ export async function buildProjectLens(projectId, deps) {
   await loadTaskStore()
   const tasks = listProjectTasks(projectId)
   const warningItems = []
+  const ingestReviewItems = []
   for (const task of tasks) {
     if (!task?.result?.ingested) continue
     for (const entry of task.result.ingested) {
@@ -84,6 +103,21 @@ export async function buildProjectLens(projectId, deps) {
           kind: "warning",
           label: warning,
           path: entry.sourcePath,
+        })
+      }
+      for (const review of entry.reviewItems || []) {
+        ingestReviewItems.push({
+          kind: "ingest-review",
+          key: reviewKeyForIngestReview(review),
+          label: labelForIngestReview(review),
+          path: review.affectedPages?.[0] || review.sourcePath || "",
+          sourcePath: review.sourcePath || entry.sourcePath,
+          reviewType: review.type,
+          title: review.title,
+          detail: review.description || "",
+          affectedPages: Array.isArray(review.affectedPages) ? review.affectedPages : [],
+          searchQueries: Array.isArray(review.searchQueries) ? review.searchQueries : [],
+          options: Array.isArray(review.options) ? review.options : [],
         })
       }
     }
@@ -101,6 +135,7 @@ export async function buildProjectLens(projectId, deps) {
       ...item,
       key: reviewKeyForWarning(item),
     })),
+    ...ingestReviewItems,
     ...(knowledge.sections.queries || []).map((item) => ({
       key: reviewKeyForQuery(item),
       kind: "query-follow-up",

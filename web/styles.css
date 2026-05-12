@@ -1455,6 +1455,17 @@ textarea {
   line-height: 1.45;
 }
 
+.lens-detail {
+  margin: 2px 0 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #56677b;
+}
+
+.lens-detail-muted {
+  color: #7b8796;
+}
+
 .lens-item.resolved {
   border-color: rgba(76, 175, 80, 0.35);
   background: rgba(76, 175, 80, 0.08);
