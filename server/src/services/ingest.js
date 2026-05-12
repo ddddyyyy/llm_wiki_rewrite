@@ -1,6 +1,5 @@
 import {
   outputLanguageInstruction,
-  readFrontmatterValue,
   resolveOutputLanguage,
   slugifyFileStem,
   titleFromFileName,
@@ -14,6 +13,7 @@ export function createIngestService({
   loadSettings,
   callChatModel,
   documentExtractor,
+  ingestCacheService,
   sourceTextCacheService,
   projectFs,
   projectService,
@@ -25,44 +25,6 @@ export function createIngestService({
   const { readProjectFile, writeProjectFile } = projectService
   const isSupportedSource = (fileName) => /\.(md|txt|markdown|pdf|docx|pptx|xlsx|csv)$/i.test(fileName)
   const needsPersistedExtractedText = (fileName) => /\.(pdf|docx|pptx|xlsx)$/i.test(fileName)
-
-  function parseSourcesField(content) {
-    const match = String(content || "").match(/^---\n([\s\S]*?)\n---/)
-    if (!match) return []
-    const frontmatter = match[1]
-    const inline = frontmatter.match(/^sources:\s*\[(.*?)\]\s*$/m)
-    if (inline) {
-      return inline[1]
-        .split(",")
-        .map((item) => item.replace(/^["'\s]+|["'\s]+$/g, ""))
-        .filter(Boolean)
-    }
-    const lines = frontmatter.split("\n")
-    const sources = []
-    let inSources = false
-    for (const line of lines) {
-      if (/^sources:\s*$/.test(line.trim())) {
-        inSources = true
-        continue
-      }
-      if (!inSources) continue
-      if (!/^\s*-\s+/.test(line)) break
-      const item = line.replace(/^\s*-\s+/, "").replace(/^["']|["']$/g, "").trim()
-      if (item) sources.push(item)
-    }
-    return sources
-  }
-
-  async function shouldSkipExistingSourcePage(projectId, wikiRelative, sourcePath) {
-    const wikiFull = ensureInsideProject(projectId, wikiRelative).fullPath
-    if (!(await exists(wikiFull))) return false
-    const { contents } = await readProjectFile(projectId, wikiRelative)
-    const pageSources = parseSourcesField(contents)
-    const sourceFileName = sourcePath.split("/").pop() || sourcePath
-    const recordedRawPath = readFrontmatterValue(contents, "source_path")
-    if (pageSources.length === 0 && !recordedRawPath) return false
-    return pageSources.includes(sourceFileName) || recordedRawPath === sourcePath
-  }
 
   async function loadProjectContext(projectId) {
     const [schema, purpose, index, overview] = await Promise.all([
@@ -83,23 +45,6 @@ export function createIngestService({
 
     onProgress({ stage: "reading", message: `正在读取 ${file.path}...`, file: file.path })
 
-    if (!force && await shouldSkipExistingSourcePage(projectId, wikiRelative, sourcePath)) {
-      if (needsPersistedExtractedText(file.name)) {
-        const cached = await sourceTextCacheService.loadCachedText(projectId, sourcePath)
-        if (!cached?.text?.trim()) {
-          const { text: raw } = await documentExtractor.extractText(file.fullPath)
-          if (raw.trim()) {
-            await sourceTextCacheService.saveCachedText(projectId, sourcePath, raw)
-          }
-        }
-      }
-      return {
-        skipped: true,
-        sourcePath,
-        wikiPath: wikiRelative,
-      }
-    }
-
     const { text: raw, chars } = await documentExtractor.extractText(file.fullPath)
     if (!raw.trim()) {
       return {
@@ -109,6 +54,27 @@ export function createIngestService({
       }
     }
     await sourceTextCacheService.saveCachedText(projectId, sourcePath, raw)
+    const cachedIngest = !force
+      ? await ingestCacheService.checkIngestCache(projectId, sourcePath, raw)
+      : null
+    if (cachedIngest) {
+      onProgress({
+        stage: "finalizing",
+        message: `来源未变化，已复用缓存结果：${file.path}...`,
+        file: file.path,
+      })
+      return {
+        skipped: false,
+        cached: true,
+        sourcePath,
+        wikiPath: wikiRelative,
+        title: titleFromFileName(file.path),
+        sourceChars: chars,
+        written: cachedIngest.filesWritten,
+        warnings: cachedIngest.warnings,
+        reviewItems: cachedIngest.reviewItems,
+      }
+    }
     const outputLanguage = resolveOutputLanguage(settings, raw)
 
     onProgress({ stage: "analyzing", message: `正在分析 ${file.path}...`, file: file.path })
@@ -213,8 +179,16 @@ export function createIngestService({
     if (!wroteIndex) {
       await rebuildWikiIndex(projectId, wikiServiceDeps)
     }
+    if (written.length > 0) {
+      await ingestCacheService.saveIngestCache(projectId, sourcePath, raw, {
+        filesWritten: written,
+        reviewItems,
+        warnings,
+      })
+    }
     return {
       skipped: false,
+      cached: false,
       sourcePath,
       wikiPath: wikiRelative,
       title: titleFromFileName(file.path),

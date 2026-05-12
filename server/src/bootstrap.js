@@ -7,6 +7,7 @@ import { createDocumentExtractor } from "./services/document-extractor.js"
 import { createIngestService } from "./services/ingest.js"
 import { createImportHistoryService } from "./services/import-history.js"
 import { createGraphService } from "./services/graph.js"
+import { createIngestCacheService } from "./services/ingest-cache.js"
 import { createKnowledgeBaseService } from "./services/knowledge-base.js"
 import { createLlmService } from "./services/llm.js"
 import { createLintService } from "./services/lint.js"
@@ -57,9 +58,10 @@ export function createAppServices(runtime) {
   const projectService = createProjectService({ projectFs })
   const importHistoryService = createImportHistoryService({ projectService })
   const conversationService = createConversationService({ projectFs, projectService })
+  const ingestCacheService = createIngestCacheService({ projectService, projectFs })
   const sourceTextCacheService = createSourceTextCacheService({ projectFs, projectService, documentExtractor })
   const llmService = createLlmService({ loadSettings: settingsService.loadSettings })
-  const sourceManagerService = createSourceManagerService({ projectFs, projectService, sourceTextCacheService })
+  const sourceManagerService = createSourceManagerService({ projectFs, projectService, sourceTextCacheService, ingestCacheService })
 
   const wikiServiceDeps = {
     ensureInsideProject: projectService.ensureInsideProject,
@@ -97,6 +99,7 @@ export function createAppServices(runtime) {
     loadSettings: settingsService.loadSettings,
     callChatModel: llmService.callChatModel,
     documentExtractor,
+    ingestCacheService,
     sourceTextCacheService,
     projectFs,
     projectService,

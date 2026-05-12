@@ -86,6 +86,7 @@ export function createSourceManagerService({
   projectFs,
   projectService,
   sourceTextCacheService,
+  ingestCacheService,
 }) {
   const {
     ensureInsideProject,
@@ -178,6 +179,7 @@ export function createSourceManagerService({
       if ((await exists(target.fullPath)) && !target.name.startsWith(".")) {
         await unlink(target.fullPath)
         await sourceTextCacheService.deleteCachedText(projectId, target.path)
+        await ingestCacheService.removeFromIngestCache(projectId, target.path)
         deletedSources.push(target.path)
         const { deletedWikiPaths, rewrittenWikiPaths } = await cleanupWikiPagesForSource(projectId, path.basename(target.path))
         for (const wikiPath of deletedWikiPaths) deletedWikiSet.add(wikiPath)
