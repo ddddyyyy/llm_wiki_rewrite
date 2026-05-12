@@ -216,6 +216,49 @@ export function createIngestService({
     return selected.join("\n\n")
   }
 
+  async function refreshCachedIngestArtifacts(projectId, cachedEntry, wikiRelative) {
+    const warnings = [...(Array.isArray(cachedEntry?.warnings) ? cachedEntry.warnings : [])]
+    const refreshActions = []
+    const normalizedWritten = Array.isArray(cachedEntry?.filesWritten)
+      ? [...new Set(cachedEntry.filesWritten.filter(Boolean))]
+      : []
+
+    const sourcePageResolved = ensureInsideProject(projectId, wikiRelative)
+    if (!(await exists(sourcePageResolved.fullPath))) {
+      throw new Error(`缓存命中的来源摘要页缺失：${wikiRelative}`)
+    }
+
+    const indexPath = "wiki/index.md"
+    const indexResolved = ensureInsideProject(projectId, indexPath)
+    let needsIndexRefresh = !(await exists(indexResolved.fullPath))
+
+    if (!needsIndexRefresh) {
+      try {
+        const { contents } = await readProjectFile(projectId, indexPath)
+        const sourceSlug = stripMarkdownExtension(path.basename(wikiRelative))
+        if (!contents.includes(`[[${sourceSlug}]]`)) {
+          needsIndexRefresh = true
+        }
+      } catch {
+        needsIndexRefresh = true
+      }
+    }
+
+    if (needsIndexRefresh) {
+      await rebuildWikiIndex(projectId, wikiServiceDeps)
+      refreshActions.push("rebuild-index")
+      warnings.push(`命中提取缓存后发现索引缺失或未收录 ${wikiRelative}，已自动重建 wiki/index.md。`)
+      if (!normalizedWritten.includes(indexPath)) normalizedWritten.push(indexPath)
+    }
+
+    return {
+      filesWritten: normalizedWritten,
+      warnings,
+      reviewItems: Array.isArray(cachedEntry?.reviewItems) ? cachedEntry.reviewItems : [],
+      refreshActions,
+    }
+  }
+
   async function ingestSourceFile(projectId, file, projectContext, settings, onProgress = () => {}, options = {}) {
     const { force = false } = options
     const slug = slugifyFileStem(file.name)
@@ -238,6 +281,7 @@ export function createIngestService({
       ? await ingestCacheService.checkIngestCache(projectId, sourcePath, raw)
       : null
     if (cachedIngest) {
+      const refreshed = await refreshCachedIngestArtifacts(projectId, cachedIngest, wikiRelative)
       onProgress({
         stage: "finalizing",
         message: `来源未变化，已复用缓存结果：${file.path}...`,
@@ -250,9 +294,10 @@ export function createIngestService({
         wikiPath: wikiRelative,
         title: titleFromFileName(file.path),
         sourceChars: chars,
-        written: cachedIngest.filesWritten,
-        warnings: cachedIngest.warnings,
-        reviewItems: cachedIngest.reviewItems,
+        written: refreshed.filesWritten,
+        warnings: refreshed.warnings,
+        reviewItems: refreshed.reviewItems,
+        refreshActions: refreshed.refreshActions,
       }
     }
     const outputLanguage = resolveOutputLanguage(settings, raw)
