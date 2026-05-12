@@ -6,6 +6,7 @@ import {
   titleFromFileName,
 } from "../lib/text.js"
 import { parseFileBlocks } from "../lib/knowledge.js"
+import { mergePageContent } from "../lib/page-merge.js"
 import { buildAnalysisPrompt, buildGenerationPrompt } from "../prompts/ingest.js"
 
 export function createIngestService({
@@ -203,7 +204,8 @@ export function createIngestService({
     const written = []
     onProgress({ stage: "writing", message: `正在写入 ${blocks.length} 个知识文件：${file.path}...`, file: file.path })
     for (const block of blocks) {
-      await writeProjectFile(projectId, block.path, block.content)
+      const contentToWrite = await resolveWriteContent(projectId, block.path, block.content, settings, sourcePath)
+      await writeProjectFile(projectId, block.path, contentToWrite)
       written.push(block.path)
     }
     if (!wroteIndex) {
@@ -291,5 +293,114 @@ export function createIngestService({
   return {
     ingestProjectWithProgress,
     reingestSourceWithProgress,
+  }
+
+  async function resolveWriteContent(projectId, relativePath, incomingContent, settings, sourceFilePath) {
+    if (shouldOverwriteWholePage(relativePath)) {
+      return incomingContent
+    }
+
+    let existingContent = null
+    try {
+      const existing = await readProjectFile(projectId, relativePath)
+      existingContent = existing.contents
+    } catch {
+      existingContent = null
+    }
+    if (!existingContent) return incomingContent
+
+    return mergePageContent(
+      incomingContent,
+      existingContent,
+      buildPageMerger(settings),
+      {
+        sourceFileName: sourceFilePath.split("/").pop() || sourceFilePath,
+        pagePath: relativePath,
+      },
+    )
+  }
+
+  function shouldOverwriteWholePage(relativePath) {
+    return (
+      relativePath === "wiki/index.md"
+      || relativePath.endsWith("/index.md")
+      || relativePath === "wiki/overview.md"
+      || relativePath.endsWith("/overview.md")
+      || relativePath === "wiki/log.md"
+      || relativePath.endsWith("/log.md")
+    )
+  }
+
+  function buildPageMerger(settings) {
+    return async (existingContent, incomingContent, sourceFileName) => {
+      const outputLanguage = resolveOutputLanguage(settings, `${existingContent}\n${incomingContent}`)
+      const promptLanguage = outputLanguage === "English" ? "en" : "zh-CN"
+      return callChatModel(settings, [
+        {
+          role: "system",
+          content: [
+            promptLanguage === "en"
+              ? "You are merging two versions of the same wiki page into one coherent document."
+              : "你正在把同一个 wiki 页面的两个版本合并成一个连贯的文档。",
+            promptLanguage === "en"
+              ? "Both versions describe the same entity / concept / source topic; one is already on disk, the other was just generated from a different source document."
+              : "两个版本描述的是同一个实体、概念或来源主题；一个已经存在于磁盘中，另一个刚刚由不同来源文档生成。",
+            "",
+            promptLanguage === "en" ? "Output ONE merged version that:" : "请输出一个合并后的版本，要求：",
+            promptLanguage === "en"
+              ? "- Preserves every factual claim from both versions; do not silently drop content"
+              : "- 保留两个版本中的事实信息，不要静默丢失内容",
+            promptLanguage === "en"
+              ? "- Eliminates redundancy when both versions state the same fact"
+              : "- 对重复表述做去重",
+            promptLanguage === "en"
+              ? "- Reorganizes sections so the structure is logical for the merged topic"
+              : "- 重新组织章节，使结构更适合合并后的主题",
+            promptLanguage === "en"
+              ? "- Keeps [[wikilink]] references intact"
+              : "- 保留 [[wikilink]] 交叉链接",
+            "",
+            promptLanguage === "en" ? "Output requirements:" : "输出要求：",
+            promptLanguage === "en"
+              ? "- The first line must be `---`"
+              : "- 第一行必须是 `---`",
+            promptLanguage === "en"
+              ? "- Output the complete file: YAML frontmatter + body"
+              : "- 输出完整文件：YAML frontmatter + 正文",
+            promptLanguage === "en"
+              ? "- No preamble, no explanatory prose"
+              : "- 不要写前言或解释性文字",
+            promptLanguage === "en"
+              ? "- The caller will deterministically rewrite `sources`, `tags`, `related`, and `updated`; your job is to produce the best merged page"
+              : "- 调用方会确定性地重写 `sources`、`tags`、`related` 和 `updated`；你的任务是产出最佳的合并页面",
+            outputLanguageInstruction(outputLanguage),
+          ].join("\n"),
+        },
+        {
+          role: "user",
+          content: [
+            promptLanguage === "en"
+              ? `## Existing version on disk`
+              : "## 磁盘中的现有版本",
+            "",
+            existingContent,
+            "",
+            "---",
+            "",
+            promptLanguage === "en"
+              ? `## Newly generated version (from ${sourceFileName})`
+              : `## 新生成的版本（来自 ${sourceFileName}）`,
+            "",
+            incomingContent,
+            "",
+            "---",
+            "",
+            promptLanguage === "en"
+              ? "Now output the merged file. Start with `---` on the first line."
+              : "现在请直接输出合并后的完整文件，第一行从 `---` 开始。",
+          ].join("\n"),
+        },
+      ])
+    }
   }
 }
