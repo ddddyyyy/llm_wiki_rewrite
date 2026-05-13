@@ -84,6 +84,11 @@ function filePriority(filePath) {
   return 10
 }
 
+function queryNeedsSourceDetail(query) {
+  const text = String(query || "").trim().toLowerCase()
+  return /第.{0,6}条|第.{0,6}章|哪一条|哪条|条款|章节|原文|具体|依据|规定|article|section|clause|exact wording/i.test(text)
+}
+
 export async function buildFallbackResults(projectId, deps) {
   const { ensureInsideProject, collectFiles, readFile } = deps
   const projectRoot = ensureInsideProject(projectId).projectRoot
@@ -146,6 +151,7 @@ export async function buildChatContext(projectId, query, searchResults, settings
   const wikiLimit = wikiResults.length > 0 ? 5 : 0
   const reservedWiki = wikiResults.slice(0, wikiLimit)
   const topWikiTitleMatch = reservedWiki.some((item) => item.titleMatch)
+  const needsSourceDetail = queryNeedsSourceDetail(query)
   const reservedSources = []
   if (sourceResults[0]) {
     const topSource = sourceResults[0]
@@ -153,6 +159,7 @@ export async function buildChatContext(projectId, query, searchResults, settings
       wikiResults.length === 0
       || topSource.titleMatch
       || !topWikiTitleMatch
+      || needsSourceDetail
     ) {
       reservedSources.push(topSource)
     }
