@@ -44,8 +44,7 @@ export function computeContextBudget(maxContextSize = 204800) {
   const indexBudget = Math.max(1200, Math.floor(maxCtx * 0.05))
   const pageBudget = Math.max(12000, Math.floor(maxCtx * 0.32))
   const maxPageSize = Math.max(2200, Math.min(8000, Math.floor(pageBudget * 0.55)))
-  const sourceBudget = Math.max(2200, Math.min(7000, Math.floor(pageBudget * 0.22)))
-  return { maxCtx, indexBudget, pageBudget, maxPageSize, sourceBudget }
+  return { maxCtx, indexBudget, pageBudget, maxPageSize }
 }
 
 export function trimIndexByQuery(rawIndex, query, indexBudget) {
@@ -82,11 +81,6 @@ function filePriority(filePath) {
   if (filePath.startsWith("wiki/synthesis/")) return 66
   if (filePath.startsWith("wiki/")) return 52
   return 10
-}
-
-function queryNeedsSourceDetail(query) {
-  const text = String(query || "").trim().toLowerCase()
-  return /第.{0,6}条|第.{0,6}章|哪一条|哪条|条款|章节|原文|具体|依据|规定|article|section|clause|exact wording/i.test(text)
 }
 
 export async function buildFallbackResults(projectId, deps) {
@@ -139,32 +133,9 @@ export async function buildChatContext(projectId, query, searchResults, settings
       if (scoreDiff !== 0) return scoreDiff
       return a.path.localeCompare(b.path)
     })
-  const sourceResults = searchResults
-    .filter((item) => item.path.startsWith("raw/sources/"))
-    .sort((a, b) => {
-      const titleMatchDiff = Number(Boolean(b.titleMatch)) - Number(Boolean(a.titleMatch))
-      if (titleMatchDiff !== 0) return titleMatchDiff
-      const scoreDiff = (b.score || 0) - (a.score || 0)
-      if (scoreDiff !== 0) return scoreDiff
-      return a.path.localeCompare(b.path)
-    })
   const wikiLimit = wikiResults.length > 0 ? 5 : 0
   const reservedWiki = wikiResults.slice(0, wikiLimit)
-  const topWikiTitleMatch = reservedWiki.some((item) => item.titleMatch)
-  const needsSourceDetail = queryNeedsSourceDetail(query)
-  const reservedSources = []
-  if (sourceResults[0]) {
-    const topSource = sourceResults[0]
-    if (
-      wikiResults.length === 0
-      || topSource.titleMatch
-      || !topWikiTitleMatch
-      || needsSourceDetail
-    ) {
-      reservedSources.push(topSource)
-    }
-  }
-  const topResults = [...reservedWiki, ...reservedSources]
+  const topResults = [...reservedWiki]
   const seedResults = topResults.filter((item) => item.path.startsWith("wiki/")).slice(0, 4)
 
   const graph = await buildRetrievalGraph(projectId, { ensureInsideProject, collectFiles, readProjectFile })
@@ -199,21 +170,17 @@ export async function buildChatContext(projectId, query, searchResults, settings
   const selectedPages = []
   const selectedPaths = new Set()
   let usedChars = 0
-  let usedSourceChars = 0
 
   async function tryAddPage(pagePath, priority = 0) {
     if (!pagePath || selectedPaths.has(pagePath) || usedChars >= budgets.pageBudget) return false
     try {
       const { contents, title } = await readChatContextFile(projectId, pagePath)
-      const isSourceExcerpt = pagePath.startsWith("raw/sources/")
       const truncated = contents.length > budgets.maxPageSize
         ? `${contents.slice(0, budgets.maxPageSize)}\n\n[...truncated...]`
         : contents
       if (usedChars + truncated.length > budgets.pageBudget) return false
-      if (isSourceExcerpt && usedSourceChars + truncated.length > budgets.sourceBudget) return false
       selectedPaths.add(pagePath)
       usedChars += truncated.length
-      if (isSourceExcerpt) usedSourceChars += truncated.length
       selectedPages.push({
         path: pagePath,
         title: title || readFrontmatterValue(contents, "title") || titleFromFileName(pagePath),
@@ -238,9 +205,6 @@ export async function buildChatContext(projectId, query, searchResults, settings
   }
   for (const relatedPath of relatedCandidates) {
     await tryAddPage(relatedPath, 3)
-  }
-  for (const result of reservedSources) {
-    await tryAddPage(result.path, 4)
   }
   if (selectedPages.length === 0) {
     await tryAddPage("wiki/index.md", 5)
