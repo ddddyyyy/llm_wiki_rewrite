@@ -7,18 +7,36 @@ import {
 import { readFrontmatterValue, titleFromFileName } from "./text.js"
 import { buildRetrievalGraph, getRelatedNodes } from "./retrieval-graph.js"
 
+const STOP_WORDS = new Set([
+  "的", "是", "了", "什么", "在", "有", "和", "与", "对", "从",
+  "the", "is", "a", "an", "what", "how", "are", "was", "were",
+  "do", "does", "did", "be", "been", "being", "have", "has", "had",
+  "it", "its", "in", "on", "at", "to", "for", "of", "with", "by",
+  "this", "that", "these", "those",
+])
+
 export function buildSearchTerms(query) {
   const normalized = normalizeTextForSearch(query)
-  const wordTerms = normalized.split(" ").filter(Boolean)
+  const wordTerms = normalized
+    .split(/[\s,，。！？、；：""''（）()\-_/\\·~～…]+/)
+    .filter((token) => token.length > 1)
+    .filter((token) => !STOP_WORDS.has(token))
 
   const cjkOnly = String(query || "").replace(/[^\u3400-\u9fff]/g, "")
   const grams = new Set()
+  const chars = new Set()
   for (let index = 0; index < cjkOnly.length - 1; index += 1) {
     grams.add(cjkOnly.slice(index, index + 2))
   }
-  if (cjkOnly.length > 0 && grams.size === 0) grams.add(cjkOnly)
+  if (cjkOnly.length > 0) {
+    if (grams.size === 0) grams.add(cjkOnly)
+    for (const char of cjkOnly) {
+      if (!STOP_WORDS.has(char)) chars.add(char)
+    }
+  }
 
-  return [...new Set([...wordTerms, ...grams])]
+  const exactPhrase = normalized.trim()
+  return [...new Set([...wordTerms, ...grams, ...chars, ...(exactPhrase ? [exactPhrase] : [])])]
 }
 
 export function computeContextBudget(maxContextSize = 204800) {

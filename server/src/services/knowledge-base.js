@@ -5,7 +5,6 @@ import {
   titleFromFileName,
 } from "../lib/text.js"
 import {
-  normalizeTextForSearch,
   snippetAround,
   stripFrontmatter,
 } from "../lib/knowledge.js"
@@ -30,6 +29,36 @@ export function createKnowledgeBaseService({
   const MAX_HISTORY_MESSAGES = 10
   const TEXT_SOURCE_EXTS = /\.(md|txt|markdown|csv)$/i
   const BINARY_SOURCE_EXTS = /\.(pdf|doc|docx|pptx|xlsx)$/i
+  const FILENAME_EXACT_BONUS = 200
+  const PHRASE_IN_TITLE_BONUS = 50
+  const PHRASE_IN_CONTENT_PER_OCC = 20
+  const MAX_PHRASE_OCC_COUNTED = 10
+  const TITLE_TOKEN_WEIGHT = 5
+  const CONTENT_TOKEN_WEIGHT = 1
+  const TRIM_PUNCT_RE =
+    /^[\s,，。！？、；：""''（）()\-_/\\·~～…]+|[\s,，。！？、；：""''（）()\-_/\\·~～…]+$/g
+
+  function tokenMatchScore(text, tokens) {
+    const lower = String(text || "").toLowerCase()
+    let score = 0
+    for (const token of tokens) {
+      if (lower.includes(token)) score += 1
+    }
+    return score
+  }
+
+  function countOccurrences(haystackLower, needleLower) {
+    if (!needleLower) return 0
+    let count = 0
+    let position = 0
+    while (true) {
+      const nextIndex = haystackLower.indexOf(needleLower, position)
+      if (nextIndex === -1) break
+      count += 1
+      position = nextIndex + needleLower.length
+    }
+    return count
+  }
 
   async function readChatContextFile(projectId, filePath) {
     if (String(filePath || "").startsWith("wiki/")) {
@@ -66,6 +95,7 @@ export function createKnowledgeBaseService({
   async function searchProject(projectId, query) {
     const terms = buildSearchTerms(query)
     if (terms.length === 0) return { results: [] }
+    const queryPhrase = String(query || "").trim().toLowerCase().replace(TRIM_PUNCT_RE, "")
 
     const projectRoot = ensureInsideProject(projectId).projectRoot
     const files = await collectFiles(projectRoot)
@@ -89,31 +119,46 @@ export function createKnowledgeBaseService({
         contents = cached?.text || ""
       }
       if (!String(contents || "").trim()) continue
-      const haystack = normalizeTextForSearch(`${file.path} ${contents}`)
-      let score = 0
-      for (const term of terms) {
-        if (haystack.includes(term)) {
-          score += term.length >= 4 ? 2 : 1
-        }
-      }
-      if (score === 0) continue
-      if (file.path.startsWith("wiki/")) score += 2
-      if (file.path.startsWith("wiki/sources/")) score += 2
-      if (file.path.startsWith("raw/sources/")) score -= 1
       const title = readFrontmatterValue(contents, "title") || titleFromFileName(file.path)
-      const titleHaystack = `${file.path} ${title}`.toLowerCase()
+      const fileStem = file.name.replace(/\.[^.]+$/, "").toLowerCase()
+      const titleText = `${title} ${file.name}`
+      const titleLower = titleText.toLowerCase()
+      const contentLower = String(contents || "").toLowerCase()
+      const filenameExact = Boolean(queryPhrase) && fileStem === queryPhrase
+      const titleHasPhrase = Boolean(queryPhrase) && titleLower.includes(queryPhrase)
+      const contentPhraseOcc = Math.min(
+        countOccurrences(contentLower, queryPhrase),
+        MAX_PHRASE_OCC_COUNTED,
+      )
+      const titleTokenScore = tokenMatchScore(titleText, terms)
+      const contentTokenScore = tokenMatchScore(contents, terms)
+      let score =
+        (filenameExact ? FILENAME_EXACT_BONUS : 0)
+        + (titleHasPhrase ? PHRASE_IN_TITLE_BONUS : 0)
+        + contentPhraseOcc * PHRASE_IN_CONTENT_PER_OCC
+        + titleTokenScore * TITLE_TOKEN_WEIGHT
+        + contentTokenScore * CONTENT_TOKEN_WEIGHT
+      if (score === 0) continue
+      if (file.path.startsWith("wiki/")) score += 4
+      if (file.path.startsWith("wiki/sources/")) score += 2
+      if (file.path.startsWith("raw/sources/")) score -= 8
       results.push({
         path: file.path,
         title,
         created: readFrontmatterValue(contents, "created"),
         updated: readFrontmatterValue(contents, "updated"),
         score,
-        titleMatch: terms.some((term) => titleHaystack.includes(term.toLowerCase())),
+        titleMatch: filenameExact || titleHasPhrase || titleTokenScore > 0,
         snippet: snippetAround(stripFrontmatter(contents), query),
       })
     }
 
-    results.sort((a, b) => b.score - a.score || a.path.localeCompare(b.path))
+    results.sort((a, b) => {
+      const titleMatchDiff = Number(Boolean(b.titleMatch)) - Number(Boolean(a.titleMatch))
+      if (titleMatchDiff !== 0) return titleMatchDiff
+      if (b.score !== a.score) return b.score - a.score
+      return a.path.localeCompare(b.path)
+    })
     return { results: results.slice(0, 8) }
   }
 
