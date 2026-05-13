@@ -133,9 +133,23 @@ export async function buildChatContext(projectId, query, searchResults, settings
       if (scoreDiff !== 0) return scoreDiff
       return a.path.localeCompare(b.path)
     })
+  const sourceResults = searchResults
+    .filter((item) => item.path.startsWith("raw/sources/"))
+    .sort((a, b) => {
+      const titleMatchDiff = Number(Boolean(b.titleMatch)) - Number(Boolean(a.titleMatch))
+      if (titleMatchDiff !== 0) return titleMatchDiff
+      const scoreDiff = (b.score || 0) - (a.score || 0)
+      if (scoreDiff !== 0) return scoreDiff
+      return a.path.localeCompare(b.path)
+    })
   const wikiLimit = wikiResults.length > 0 ? 5 : 0
   const reservedWiki = wikiResults.slice(0, wikiLimit)
-  const topResults = [...reservedWiki]
+  const reserveSource = sourceResults.length > 0 && (
+    reservedWiki.length === 0
+      || sourceResults[0].titleMatch
+      || !reservedWiki.some((item) => item.titleMatch)
+  )
+  const topResults = reserveSource ? [...reservedWiki, sourceResults[0]] : [...reservedWiki]
   const seedResults = topResults.filter((item) => item.path.startsWith("wiki/")).slice(0, 4)
 
   const graph = await buildRetrievalGraph(projectId, { ensureInsideProject, collectFiles, readProjectFile })
@@ -200,11 +214,14 @@ export async function buildChatContext(projectId, query, searchResults, settings
   for (const result of reservedWiki.filter((item) => !item.titleMatch)) {
     await tryAddPage(result.path, 1)
   }
+  if (reserveSource && sourceResults[0]) {
+    await tryAddPage(sourceResults[0].path, 2)
+  }
   for (const expansion of graphExpansions) {
-    await tryAddPage(expansion.path, 2)
+    await tryAddPage(expansion.path, 3)
   }
   for (const relatedPath of relatedCandidates) {
-    await tryAddPage(relatedPath, 3)
+    await tryAddPage(relatedPath, 4)
   }
   if (selectedPages.length === 0) {
     await tryAddPage("wiki/index.md", 5)
@@ -212,7 +229,7 @@ export async function buildChatContext(projectId, query, searchResults, settings
 
   const pagesContext = selectedPages.length > 0
     ? selectedPages.map((page, index) => `### [${index + 1}] ${page.title}\nPath: ${page.path}\n\n${page.content}`).join("\n\n---\n\n")
-    : "(No wiki pages found)"
+    : "(No wiki pages or source excerpts found)"
 
   const pageList = selectedPages.map((page, index) => `[${index + 1}] ${page.title} (${page.path})`).join("\n")
 

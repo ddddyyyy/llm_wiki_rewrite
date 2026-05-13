@@ -19,10 +19,10 @@ export function buildChatSystemPrompt({
 }) {
   const language = normalizePromptLanguage(responseLanguage)
   return [
-    pickPromptText(language, `You are a knowledgeable wiki assistant for the project "${projectId}". Answer questions based on the wiki content provided below.`, `你是项目“${projectId}”的知识型 wiki 助手。请基于下面提供的 wiki 页面来回答问题。`),
+    pickPromptText(language, `You are a knowledgeable wiki assistant for the project "${projectId}". Answer questions based on the wiki content and source excerpts provided below.`, `你是项目“${projectId}”的知识型 wiki 助手。请基于下面提供的 wiki 页面和来源摘录来回答问题。`),
     "",
     pickPromptText(language, "## Rules", "## 规则"),
-    pickPromptText(language, "- Answer based ONLY on the numbered wiki pages provided below.", "- 只能基于下面编号的 wiki 页面来回答。"),
+    pickPromptText(language, "- Answer based ONLY on the numbered wiki pages and source excerpts provided below.", "- 只能基于下面编号的 wiki 页面和来源摘录来回答。"),
     pickPromptText(language, "- If the provided pages don't contain enough information, say so honestly.", "- 如果提供的页面信息不足，请诚实说明。"),
     pickPromptText(language, "- Use [[wikilink]] syntax to reference wiki pages.", "- 用 [[wikilink]] 语法引用 wiki 页面。"),
     pickPromptText(language, "- When citing information, use the page number in brackets, e.g. [1], [2].", "- 在引用信息时，用页码方括号，例如 [1]、[2]。"),
@@ -45,6 +45,8 @@ export function buildChatSystemPrompt({
     pickPromptText(language, `Ignore the language of the wiki content. Write in ${responseLanguage} only.`, `忽略 wiki 内容本身的语言，只使用 ${responseLanguage} 作答。`),
     pickPromptText(language, `Even proper nouns should use standard ${responseLanguage} transliteration when appropriate.`, `在合适的情况下，即便是专有名词也应采用 ${responseLanguage} 的常见写法或转写。`),
     pickPromptText(language, "Do not use any other language. This overrides all other instructions.", "不要使用其他语言。这条要求覆盖其他所有说明。"),
+    "",
+    pickPromptText(language, "Prefer wiki pages when they already answer the question directly. Use source excerpts when they provide precise wording, identifiers, numbers, or evidence that the wiki pages summarize less precisely.", "当 wiki 页面已经能直接回答问题时，优先依据 wiki 页面；如果来源摘录提供了更精确的措辞、编号、数字或证据，而 wiki 页面只有概括性描述，也应结合来源摘录回答。"),
   ].filter(Boolean).join("\n")
 }
 
