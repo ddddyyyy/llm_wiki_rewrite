@@ -246,6 +246,17 @@ export function createWorkspaceActions(deps) {
     await loadLens()
   }
 
+  async function queueReviewItem(payload) {
+    if (!state.selectedProjectId) return
+    await api.queueReviewItem(state.selectedProjectId, payload)
+    await loadLens()
+    if (state.activeView === "review") {
+      state.lensTab = "review"
+      renderLensPanel()
+    }
+    setStatus(`已加入复核：${payload.label || payload.title || "待处理事项"}`)
+  }
+
   async function saveSynthesisFromChat(meta) {
     if (!state.selectedProjectId) return
     setStatus("正在保存综合页...")
@@ -1082,6 +1093,7 @@ export function createWorkspaceActions(deps) {
     loadLens,
     loadImportHistory,
     reviewAction,
+    queueReviewItem,
     saveSynthesisFromChat,
     loadTasks,
     loadConversations,

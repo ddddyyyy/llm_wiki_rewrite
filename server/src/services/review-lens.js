@@ -16,6 +16,14 @@ function reviewKeyForIngestReview(item) {
   return `ingest-review:${item.type}:${item.sourcePath}:${item.title}`
 }
 
+function reviewKeyForLintFinding(item) {
+  return `lint-finding:${item.findingType || "issue"}:${item.path || ""}:${item.title || item.label || ""}`
+}
+
+function reviewKeyForGraphInsight(item) {
+  return `graph-insight:${item.insightType || "issue"}:${item.insightId || item.path || item.title || item.label || ""}`
+}
+
 function labelForIngestReview(item) {
   const prefixMap = {
     contradiction: "内容冲突",
@@ -44,7 +52,61 @@ function formatReviewLabelFromKey(key) {
     const parts = key.split(":")
     return `已处理提取复核：${parts.slice(3).join(":") || key}`
   }
+  if (key.startsWith("lint-finding:")) {
+    return `已处理检查项：${key.split(":").slice(3).join(":") || key}`
+  }
+  if (key.startsWith("graph-insight:")) {
+    return `已处理图谱洞察：${key.split(":").slice(3).join(":") || key}`
+  }
   return key
+}
+
+function normalizeQueuedReviewItem(payload = {}) {
+  const kind = String(payload.kind || "").trim() || "manual-review"
+  const label = String(payload.label || "").trim() || "待处理事项"
+  const title = String(payload.title || payload.label || "").trim() || label
+  const path = String(payload.path || "").trim()
+  const detail = String(payload.detail || "").trim()
+  const prompt = String(payload.prompt || "").trim()
+  const reviewType = String(payload.reviewType || "").trim()
+  const insightType = String(payload.insightType || "").trim()
+  const findingType = String(payload.findingType || "").trim()
+  const insightId = String(payload.insightId || "").trim()
+  const sourcePath = String(payload.sourcePath || "").trim()
+  const searchQueries = Array.isArray(payload.searchQueries)
+    ? payload.searchQueries.map((item) => String(item || "").trim()).filter(Boolean).slice(0, 4)
+    : []
+  const affectedPages = Array.isArray(payload.affectedPages)
+    ? payload.affectedPages.map((item) => String(item || "").trim()).filter(Boolean).slice(0, 6)
+    : []
+
+  let key = String(payload.key || "").trim()
+  if (!key) {
+    if (kind === "lint-finding") {
+      key = reviewKeyForLintFinding({ findingType, path, title, label })
+    } else if (kind === "graph-insight") {
+      key = reviewKeyForGraphInsight({ insightType, insightId, path, title, label })
+    } else {
+      key = `manual-review:${kind}:${path}:${title}`
+    }
+  }
+
+  return {
+    key,
+    kind,
+    label,
+    title,
+    path,
+    detail,
+    prompt,
+    reviewType,
+    insightType,
+    findingType,
+    insightId,
+    sourcePath,
+    searchQueries,
+    affectedPages,
+  }
 }
 
 export async function loadReviewState(projectId, deps) {
@@ -152,13 +214,35 @@ export async function buildProjectLens(projectId, deps) {
       .map((item) => item.key),
   )
 
-  const unresolvedReviewItems = reviewItems.filter((item) => !resolvedKeys.has(item.key))
+  const customOpenReviewItems = reviewState
+    .filter((item) => item?.status === "open" && item?.key && item?.kind)
+    .map((item) => ({
+      key: item.key,
+      kind: item.kind,
+      label: item.label || item.title || formatReviewLabelFromKey(item.key),
+      title: item.title || item.label || "",
+      path: item.path || "",
+      detail: item.detail || "",
+      prompt: item.prompt || "",
+      sourcePath: item.sourcePath || "",
+      reviewType: item.reviewType || "",
+      insightType: item.insightType || "",
+      findingType: item.findingType || "",
+      affectedPages: Array.isArray(item.affectedPages) ? item.affectedPages : [],
+      searchQueries: Array.isArray(item.searchQueries) ? item.searchQueries : [],
+    }))
+
+  const unresolvedReviewItems = [
+    ...reviewItems.filter((item) => !resolvedKeys.has(item.key)),
+    ...customOpenReviewItems,
+  ].filter((item, index, list) => list.findIndex((candidate) => candidate.key === item.key) === index)
+
   const resolvedReviewItems = reviewState
     .filter((item) => item?.status === "resolved" && item?.key)
     .map((item) => ({
       key: item.key,
       kind: "resolved",
-      label: formatReviewLabelFromKey(item.key),
+      label: item.label || formatReviewLabelFromKey(item.key),
       path: item.path || "",
       resolvedAt: item.resolvedAt || "",
     }))
@@ -202,4 +286,19 @@ export async function reopenReviewItem(projectId, key, deps) {
   const next = current.filter((item) => item.key !== key)
   await saveReviewState(projectId, next, deps)
   return { ok: true, key, status: "open" }
+}
+
+export async function queueReviewItem(projectId, payload, deps) {
+  const current = await loadReviewState(projectId, deps)
+  const item = normalizeQueuedReviewItem(payload)
+  const next = [
+    ...current.filter((entry) => entry.key !== item.key),
+    {
+      ...item,
+      status: "open",
+      queuedAt: new Date().toISOString(),
+    },
+  ]
+  await saveReviewState(projectId, next, deps)
+  return { ok: true, item: { ...item, status: "open" } }
 }

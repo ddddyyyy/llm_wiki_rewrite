@@ -1988,7 +1988,7 @@ textarea {
 
 .graph-preview {
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr) auto;
 }
 
 .graph-preview-toolbar {
@@ -2000,6 +2000,46 @@ textarea {
   min-height: 0;
   height: 100%;
   background: transparent;
+}
+
+.graph-insights-panel {
+  display: grid;
+  gap: 10px;
+  padding: 12px 16px 16px;
+  border-top: 1px solid rgba(59, 74, 96, 0.08);
+  background: rgba(248, 250, 252, 0.78);
+}
+
+.graph-insights-list {
+  display: grid;
+  gap: 10px;
+}
+
+.graph-insight-card {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid rgba(59, 74, 96, 0.08);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.88);
+}
+
+.graph-insight-head {
+  display: grid;
+  gap: 3px;
+}
+
+.graph-insight-detail {
+  margin: 0;
+  color: rgba(36, 50, 68, 0.84);
+  line-height: 1.5;
+  font-size: 0.88rem;
+}
+
+.graph-insight-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .graph-stage {

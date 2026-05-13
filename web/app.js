@@ -157,6 +157,7 @@ const els = {
   graphPreviewDownload: document.querySelector("#graph-preview-download"),
   graphPreviewDownloadCopy: document.querySelector("#graph-preview-download-copy"),
   graphPreviewDownloadLink: document.querySelector("#graph-preview-download-link"),
+  graphInsights: document.querySelector("#graph-insights"),
   sourcesPreviewPath: document.querySelector("#sources-preview-path"),
   sourcesPreviewPanel: document.querySelector("#sources-preview-panel"),
   sourcesPreviewDownload: document.querySelector("#sources-preview-download"),
@@ -477,6 +478,8 @@ function renderGraphPanel() {
     state,
     onOpenFile: workspaceActions.openFile,
     onPreviewNode: workspaceActions.previewGraphNode,
+    onQueueReviewItem: workspaceActions.queueReviewItem,
+    onAskQuestion: focusQuestion,
   })
   updateGraphPreview()
 }
@@ -486,6 +489,8 @@ function renderLintPanel() {
     els,
     state,
     onOpenFile: workspaceActions.openFile,
+    onQueueReviewItem: workspaceActions.queueReviewItem,
+    onAskQuestion: focusQuestion,
   })
 }
 

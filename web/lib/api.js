@@ -101,6 +101,10 @@ export function createApiClient() {
     loadGraph: (projectId) => request(`/api/projects/${encodeURIComponent(projectId)}/graph`),
     loadLint: (projectId) => request(`/api/projects/${encodeURIComponent(projectId)}/lint`),
     loadLens: (projectId) => request(`/api/projects/${encodeURIComponent(projectId)}/lens`),
+    queueReviewItem: (projectId, payload) => request(`/api/projects/${encodeURIComponent(projectId)}/review-items`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
     loadImportHistory: (projectId) => request(`/api/projects/${encodeURIComponent(projectId)}/import-history`),
     loadTasks: (projectId) => request(`/api/projects/${encodeURIComponent(projectId)}/tasks`),
     loadTree: (projectId) => request(`/api/projects/${encodeURIComponent(projectId)}/tree`),

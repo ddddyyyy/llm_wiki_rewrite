@@ -72,9 +72,113 @@ function formatEdgeWeight(weight) {
   return value.toFixed(1)
 }
 
-export function renderGraphView({ els, state, onOpenFile, onPreviewNode }) {
+function renderGraphInsights({
+  els,
+  insights,
+  onOpenFile,
+  onQueueReviewItem,
+  onAskQuestion,
+}) {
+  if (!els.graphInsights) return
+  const cards = []
+
+  for (const node of (insights.bridgeNodes || []).slice(0, 2)) {
+    cards.push({
+      key: `bridge:${node.path}`,
+      title: `桥梁页：${node.title}`,
+      detail: `它连接了多个知识区块，连接数 ${node.degree || 0}。补强这一页，通常能同时改善检索和问答。`,
+      path: node.path,
+      prompt: `请分析为什么 ${node.title} 会成为知识图谱里的桥梁页，并建议我该如何补强它。`,
+      queuePayload: {
+        kind: "graph-insight",
+        insightType: "bridge-node",
+        insightId: node.path,
+        title: node.title,
+        label: `图谱洞察：桥梁页 ${node.title}`,
+        path: node.path,
+        detail: `连接数 ${node.degree || 0}，是当前图谱里的关键桥梁页。`,
+        prompt: `请分析为什么 ${node.title} 会成为知识图谱里的桥梁页，并建议我该如何补强它。`,
+      },
+    })
+  }
+
+  for (const node of (insights.isolatedNodes || []).slice(0, 2)) {
+    cards.push({
+      key: `isolated:${node.path}`,
+      title: `孤立趋势：${node.title}`,
+      detail: `这页当前连接很少（连接数 ${node.degree || 0}），容易在知识库里“存在但不好用”。`,
+      path: node.path,
+      prompt: `请分析 ${node.title} 为什么在图谱里连接偏少，并建议我该补哪些链接或补充页。`,
+      queuePayload: {
+        kind: "graph-insight",
+        insightType: "isolated-node",
+        insightId: node.path,
+        title: node.title,
+        label: `图谱洞察：连接偏少 ${node.title}`,
+        path: node.path,
+        detail: `连接数 ${node.degree || 0}，当前较为孤立。`,
+        prompt: `请分析 ${node.title} 为什么在图谱里连接偏少，并建议我该补哪些链接或补充页。`,
+      },
+    })
+  }
+
+  for (const cluster of (insights.sparseClusters || []).slice(0, 1)) {
+    const memberTitles = (cluster.members || []).slice(0, 3).map((item) => item.title).join("、")
+    const primaryPath = cluster.members?.[0]?.path || ""
+    cards.push({
+      key: `cluster:${cluster.id}`,
+      title: `连接偏弱簇`,
+      detail: `这组页面彼此主题接近，但互相链接还比较少。成员包括：${memberTitles || "未命名页面"}。`,
+      path: primaryPath,
+      prompt: `请分析这组知识页为什么会形成连接偏弱簇，并建议我优先补哪些页面间的关系：${memberTitles || "当前簇成员"}`,
+      queuePayload: {
+        kind: "graph-insight",
+        insightType: "sparse-cluster",
+        insightId: cluster.id,
+        title: "连接偏弱簇",
+        label: "图谱洞察：连接偏弱簇",
+        path: primaryPath,
+        detail: `成员包括：${memberTitles || "未命名页面"}。当前 cohesion=${Number(cluster.cohesion || 0).toFixed(2)}。`,
+        prompt: `请分析这组知识页为什么会形成连接偏弱簇，并建议我优先补哪些页面间的关系：${memberTitles || "当前簇成员"}`,
+        affectedPages: (cluster.members || []).map((item) => item.path).filter(Boolean),
+      },
+    })
+  }
+
+  if (!cards.length) {
+    els.graphInsights.innerHTML = `<p class="empty">当前图谱还没有足够明显的后续洞察。</p>`
+    return
+  }
+
+  els.graphInsights.innerHTML = ""
+  for (const card of cards) {
+    const article = document.createElement("article")
+    article.className = "graph-insight-card"
+    article.innerHTML = `
+      <div class="graph-insight-head">
+        <strong>${escapeHtml(card.title)}</strong>
+        ${card.path ? `<span class="item-meta">${escapeHtml(card.path)}</span>` : ""}
+      </div>
+      <p class="graph-insight-detail">${escapeHtml(card.detail)}</p>
+      <div class="graph-insight-actions">
+        ${card.path ? `<button type="button" class="mini-button graph-insight-open">打开</button>` : ""}
+        <button type="button" class="mini-button graph-insight-review">加入复核</button>
+        <button type="button" class="mini-button graph-insight-ask">带入问答</button>
+      </div>
+    `
+    article.querySelector(".graph-insight-open")?.addEventListener("click", () => void onOpenFile?.(card.path))
+    article.querySelector(".graph-insight-review")?.addEventListener("click", () => void onQueueReviewItem?.(card.queuePayload))
+    article.querySelector(".graph-insight-ask")?.addEventListener("click", () => onAskQuestion?.(card.prompt))
+    els.graphInsights.appendChild(article)
+  }
+}
+
+export function renderGraphView({ els, state, onOpenFile, onPreviewNode, onQueueReviewItem, onAskQuestion }) {
   els.graphStage.innerHTML = ""
   els.graphSummary.innerHTML = ""
+  if (els.graphInsights) {
+    els.graphInsights.innerHTML = ""
+  }
 
   if (state.activeView !== "graph") {
     return
@@ -294,4 +398,12 @@ export function renderGraphView({ els, state, onOpenFile, onPreviewNode }) {
   els.graphLegend.innerHTML = Object.entries(TYPE_COLORS)
     .map(([type, color]) => `<span class="graph-legend-item"><i style="background:${color}"></i>${escapeHtml(TYPE_LABELS[type] || type)}</span>`)
     .join("")
+
+  renderGraphInsights({
+    els,
+    insights,
+    onOpenFile,
+    onQueueReviewItem,
+    onAskQuestion,
+  })
 }

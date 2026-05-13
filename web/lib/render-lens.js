@@ -108,14 +108,14 @@ export function renderLens({ els, state, onOpenFile, onRunIngest, onReviewAction
         actions.appendChild(askButton)
       }
 
-      if (item.kind === "ingest-review" && item.searchQueries?.length) {
+      if ((item.kind === "ingest-review" && item.searchQueries?.length) || item.prompt) {
         const askButton = document.createElement("button")
         askButton.type = "button"
         askButton.className = "mini-button"
-        askButton.textContent = "带入问答"
+        askButton.textContent = item.kind === "ingest-review" ? "带入问答" : "继续分析"
         askButton.addEventListener("click", () => {
-          onAskQuestion(item.searchQueries[0] || item.title || item.label)
-          setStatus("已将提取复核问题载入问答框")
+          onAskQuestion(item.prompt || item.searchQueries?.[0] || item.title || item.label)
+          setStatus(item.kind === "ingest-review" ? "已将提取复核问题载入问答框" : "已将复核事项载入问答框")
         })
         actions.appendChild(askButton)
       }

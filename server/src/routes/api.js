@@ -191,6 +191,13 @@ export function createApiHandler(services) {
       return json(res, 200, await reviewService.buildProjectLens(projectId))
     }
 
+    const reviewCreateMatch = pathname.match(/^\/api\/projects\/([^/]+)\/review-items$/)
+    if (reviewCreateMatch && req.method === "POST") {
+      const projectId = decodeURIComponent(reviewCreateMatch[1])
+      const body = await readBody(req)
+      return json(res, 201, await reviewService.queueReviewItem(projectId, body))
+    }
+
     const reviewActionMatch = pathname.match(/^\/api\/projects\/([^/]+)\/review-items\/action$/)
     if (reviewActionMatch && req.method === "POST") {
       const projectId = decodeURIComponent(reviewActionMatch[1])

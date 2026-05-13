@@ -16,6 +16,7 @@ import { createConversationService } from "./services/conversations.js"
 import { createSourceTextCacheService } from "./services/source-text-cache.js"
 import {
   buildProjectLens,
+  queueReviewItem,
   reopenReviewItem,
   resolveReviewItem,
 } from "./services/review-lens.js"
@@ -91,6 +92,7 @@ export function createAppServices(runtime) {
 
   const reviewService = {
     buildProjectLens: (projectId) => buildProjectLens(projectId, reviewLensDeps),
+    queueReviewItem: (projectId, payload) => queueReviewItem(projectId, payload, reviewLensDeps),
     resolveReviewItem: (projectId, key) => resolveReviewItem(projectId, key, reviewLensDeps),
     reopenReviewItem: (projectId, key) => reopenReviewItem(projectId, key, reviewLensDeps),
   }
