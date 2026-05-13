@@ -212,7 +212,7 @@ export async function buildChatContext(projectId, query, searchResults, settings
 
   const pagesContext = selectedPages.length > 0
     ? selectedPages.map((page, index) => `### [${index + 1}] ${page.title}\nPath: ${page.path}\n\n${page.content}`).join("\n\n---\n\n")
-    : "(No wiki pages or source excerpts found)"
+    : "(No wiki pages found)"
 
   const pageList = selectedPages.map((page, index) => `[${index + 1}] ${page.title} (${page.path})`).join("\n")
 
