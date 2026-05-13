@@ -260,3 +260,13 @@ export function parseCitedPageNumbers(answer, maxPage) {
 export function stripCitationComment(answer) {
   return String(answer || "").replace(/\n?\s*<!--\s*cited:\s*([0-9,\s]+)\s*-->\s*$/i, "").trim()
 }
+
+export function dedupeAdjacentCitations(answer) {
+  let text = String(answer || "")
+  let previous = ""
+  while (text !== previous) {
+    previous = text
+    text = text.replace(/(\[(\d+)\])(?:\s*\[(\2)\])+/g, "$1")
+  }
+  return text
+}

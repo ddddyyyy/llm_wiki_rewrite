@@ -12,6 +12,7 @@ import {
   buildChatContext,
   buildFallbackResults,
   buildSearchTerms,
+  dedupeAdjacentCitations,
   parseCitedPageNumbers,
   stripCitationComment,
 } from "../lib/chat-context.js"
@@ -265,7 +266,8 @@ export function createKnowledgeBaseService({
   }
 
   function finalizeChatAnswer(rawAnswer, selectedPages = []) {
-    const citedNumbers = parseCitedPageNumbers(rawAnswer, selectedPages.length)
+    const normalizedAnswer = dedupeAdjacentCitations(rawAnswer)
+    const citedNumbers = parseCitedPageNumbers(normalizedAnswer, selectedPages.length)
     const references = citedNumbers.length > 0
       ? citedNumbers
         .map((value) => {
@@ -283,7 +285,7 @@ export function createKnowledgeBaseService({
         path: page.path,
         title: page.title,
       }))
-    const answer = stripCitationComment(rawAnswer)
+    const answer = stripCitationComment(normalizedAnswer)
     return { answer, references }
   }
 
