@@ -128,6 +128,7 @@ const els = {
   llmApiKey: document.querySelector("#llm-api-key"),
   llmApiMode: document.querySelector("#llm-api-mode"),
   llmMaxContextSize: document.querySelector("#llm-max-context-size"),
+  llmCustomHeaders: document.querySelector("#llm-custom-headers"),
   llmEnabled: document.querySelector("#llm-enabled"),
   outputLanguage: document.querySelector("#output-language"),
   chatResponseMode: document.querySelector("#chat-response-mode"),

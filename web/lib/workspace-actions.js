@@ -393,6 +393,31 @@ export function createWorkspaceActions(deps) {
     }, 2000)
   }
 
+  function formatHeadersInput(headers) {
+    if (!headers || typeof headers !== "object" || Array.isArray(headers)) return ""
+    return Object.keys(headers).length ? JSON.stringify(headers, null, 2) : ""
+  }
+
+  function parseHeadersInput(input) {
+    const raw = input.trim()
+    if (!raw) return {}
+    let parsed
+    try {
+      parsed = JSON.parse(raw)
+    } catch {
+      throw new Error("自定义 Headers 必须是合法的 JSON 对象。")
+    }
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      throw new Error("自定义 Headers 必须是 JSON 对象，例如 {\"X-Request-Source\":\"llm-wiki\"}。")
+    }
+    return Object.fromEntries(
+      Object.entries(parsed)
+        .map(([key, value]) => [String(key).trim(), value])
+        .filter(([key, value]) => key && value !== undefined && value !== null)
+        .map(([key, value]) => [key, String(value)])
+    )
+  }
+
   async function loadSettings() {
     const settings = await api.loadSettings()
     els.llmBaseUrl.value = settings.llm?.baseUrl || ""
@@ -400,6 +425,7 @@ export function createWorkspaceActions(deps) {
     els.llmApiKey.value = settings.llm?.apiKey || ""
     els.llmApiMode.value = settings.llm?.apiMode || "anthropic_messages"
     els.llmMaxContextSize.value = String(settings.llm?.maxContextSize || 204800)
+    els.llmCustomHeaders.value = formatHeadersInput(settings.llm?.customHeaders)
     els.llmEnabled.checked = Boolean(settings.llm?.enabled)
     els.outputLanguage.value = settings.output?.language || "auto"
     els.chatResponseMode.value = settings.chat?.responseMode || "stream"
@@ -415,6 +441,13 @@ export function createWorkspaceActions(deps) {
 
   async function saveSettings() {
     setStatus("正在保存 LLM 配置...")
+    let customHeaders
+    try {
+      customHeaders = parseHeadersInput(els.llmCustomHeaders.value)
+    } catch (error) {
+      setStatus(error.message)
+      return
+    }
     await api.saveSettings({
       llm: {
         baseUrl: els.llmBaseUrl.value.trim(),
@@ -422,6 +455,7 @@ export function createWorkspaceActions(deps) {
         apiKey: els.llmApiKey.value.trim(),
         apiMode: els.llmApiMode.value,
         maxContextSize: Number(els.llmMaxContextSize.value || 204800),
+        customHeaders,
         enabled: els.llmEnabled.checked,
       },
       output: {

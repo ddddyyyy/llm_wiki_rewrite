@@ -10,7 +10,24 @@ function buildAnthropicUrl(baseUrl) {
   return `${trimmed}/v1/messages`
 }
 
-function buildAnthropicHeaders(apiKey, url) {
+function normalizeCustomHeaders(headers) {
+  if (!headers || typeof headers !== "object" || Array.isArray(headers)) return {}
+  return Object.fromEntries(
+    Object.entries(headers)
+      .map(([key, value]) => [String(key).trim(), value])
+      .filter(([key, value]) => key && value !== undefined && value !== null)
+      .map(([key, value]) => [key, String(value)])
+  )
+}
+
+function mergeHeaders(baseHeaders, customHeaders) {
+  return {
+    ...baseHeaders,
+    ...normalizeCustomHeaders(customHeaders),
+  }
+}
+
+function buildAnthropicHeaders(apiKey, url, customHeaders) {
   const headers = {
     "Content-Type": "application/json",
     "x-api-key": apiKey,
@@ -21,7 +38,17 @@ function buildAnthropicHeaders(apiKey, url) {
     delete headers["x-api-key"]
     delete headers["anthropic-version"]
   }
-  return headers
+  return mergeHeaders(headers, customHeaders)
+}
+
+function buildOpenAiHeaders(apiKey, customHeaders) {
+  return mergeHeaders(
+    {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
+    customHeaders
+  )
 }
 
 function toAnthropicContent(content) {
@@ -95,17 +122,14 @@ export function createLlmService({ loadSettings }) {
       const body = buildAnthropicBody(messages, settings.llm.model)
       response = await fetch(url, {
         method: "POST",
-        headers: buildAnthropicHeaders(settings.llm.apiKey, url),
+        headers: buildAnthropicHeaders(settings.llm.apiKey, url, settings.llm.customHeaders),
         body: JSON.stringify(body),
       })
     } else {
       const url = buildOpenAiUrl(settings.llm.baseUrl)
       response = await fetch(url, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${settings.llm.apiKey}`,
-        },
+        headers: buildOpenAiHeaders(settings.llm.apiKey, settings.llm.customHeaders),
         body: JSON.stringify({
           model: settings.llm.model,
           temperature: 0.2,
@@ -144,7 +168,7 @@ export function createLlmService({ loadSettings }) {
       const body = { ...buildAnthropicBody(messages, settings.llm.model), stream: true }
       response = await fetch(url, {
         method: "POST",
-        headers: buildAnthropicHeaders(settings.llm.apiKey, url),
+        headers: buildAnthropicHeaders(settings.llm.apiKey, url, settings.llm.customHeaders),
         body: JSON.stringify(body),
         signal,
       })
@@ -152,10 +176,7 @@ export function createLlmService({ loadSettings }) {
       const url = buildOpenAiUrl(settings.llm.baseUrl)
       response = await fetch(url, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${settings.llm.apiKey}`,
-        },
+        headers: buildOpenAiHeaders(settings.llm.apiKey, settings.llm.customHeaders),
         body: JSON.stringify(buildOpenAiBody(messages, settings.llm.model, true)),
         signal,
       })

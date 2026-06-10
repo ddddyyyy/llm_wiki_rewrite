@@ -1,5 +1,25 @@
 import path from "node:path"
 
+function parseHeaderObject(value) {
+  if (!value) return {}
+  try {
+    const parsed = JSON.parse(value)
+    return typeof parsed === "object" && parsed && !Array.isArray(parsed) ? parsed : {}
+  } catch {
+    return {}
+  }
+}
+
+function normalizeHeaders(headers) {
+  if (!headers || typeof headers !== "object" || Array.isArray(headers)) return {}
+  return Object.fromEntries(
+    Object.entries(headers)
+      .map(([key, value]) => [String(key).trim(), value])
+      .filter(([key, value]) => key && value !== undefined && value !== null)
+      .map(([key, value]) => [key, String(value)])
+  )
+}
+
 export function createSettingsService({ settingsPath, fs }) {
   const { mkdir, readFile, writeFile } = fs
 
@@ -12,6 +32,7 @@ export function createSettingsService({ settingsPath, fs }) {
         model: process.env.LLM_MODEL || "Doubao-Seed-2.0-Code",
         apiMode: process.env.LLM_API_MODE || "anthropic_messages",
         maxContextSize: Number(process.env.LLM_MAX_CONTEXT_SIZE || 204800),
+        customHeaders: parseHeaderObject(process.env.LLM_CUSTOM_HEADERS),
         enabled: Boolean(process.env.LLM_API_KEY),
       },
       output: {
@@ -42,6 +63,7 @@ export function createSettingsService({ settingsPath, fs }) {
       llm: {
         ...base.llm,
         ...(next.llm || {}),
+        customHeaders: normalizeHeaders(next.llm?.customHeaders ?? base.llm?.customHeaders),
       },
       output: {
         ...base.output,
